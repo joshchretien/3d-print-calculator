@@ -1196,8 +1196,30 @@
                                     {(() => {
                                         const etsyOrders = orders.filter(o => o.source === 'Etsy' || !o.source);
                                         const websiteOrders = orders.filter(o => o.source === 'Website');
-                                        const lastEtsyOrder = etsyOrders.length > 0 ? etsyOrders.sort((a, b) => new Date(b.createdOn) - new Date(a.createdOn))[0] : null;
-                                        const lastWebsiteOrder = websiteOrders.length > 0 ? websiteOrders.sort((a, b) => new Date(b.createdOn) - new Date(a.createdOn))[0] : null;
+                                        
+                                        // For Etsy: Find the bottom-most order (last in unpaid list, or most recent in payouts)
+                                        let lastEtsyOrder = null;
+                                        const unpaidEtsyOrders = etsyOrders.filter(o => o.status === 'Unpaid');
+                                        if (unpaidEtsyOrders.length > 0) {
+                                            // Get the last (bottom-most) unpaid Etsy order
+                                            lastEtsyOrder = unpaidEtsyOrders.sort((a, b) => new Date(a.createdOn) - new Date(b.createdOn))[unpaidEtsyOrders.length - 1];
+                                        } else {
+                                            // If no unpaid Etsy orders, get the most recent paid Etsy order
+                                            const paidEtsyOrders = etsyOrders.filter(o => o.status === 'Paid');
+                                            if (paidEtsyOrders.length > 0) {
+                                                lastEtsyOrder = paidEtsyOrders.sort((a, b) => new Date(b.paidOn || b.createdOn) - new Date(a.paidOn || a.createdOn))[0];
+                                            }
+                                        }
+                                        
+                                        // For Website: Find the order with the highest order number
+                                        let lastWebsiteOrder = null;
+                                        if (websiteOrders.length > 0) {
+                                            lastWebsiteOrder = websiteOrders.reduce((highest, current) => {
+                                                const currentNum = parseInt(current.orderNumber) || 0;
+                                                const highestNum = parseInt(highest.orderNumber) || 0;
+                                                return currentNum > highestNum ? current : highest;
+                                            });
+                                        }
                                         
                                         return (
                                             <>
