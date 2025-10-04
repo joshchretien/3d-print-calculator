@@ -111,6 +111,11 @@ app.post('/api/data', async (req, res) => {
   }
 });
 
+// Redirect root to calculator
+app.get('/', (req, res) => {
+  res.redirect('/calculator-standalone.html');
+});
+
 // Serve static files
 app.use(express.static(__dirname));
 
