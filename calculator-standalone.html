@@ -173,12 +173,21 @@
 
             // Migrate existing orders to have Etsy source
             if (state.orders && Array.isArray(state.orders)) {
+                let ordersUpdated = false;
                 state.orders = state.orders.map(order => {
                     if (!order.source) {
+                        ordersUpdated = true;
                         return { ...order, source: 'Etsy' };
                     }
                     return order;
                 });
+                
+                // If we updated any orders, save them back to the server
+                if (ordersUpdated) {
+                    setTimeout(() => {
+                        saveState(state);
+                    }, 100);
+                }
             }
 
             return state;

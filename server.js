@@ -65,7 +65,7 @@ async function ensureDataFile() {
 }
 
 // Helper function to migrate data
-function migrateData(data) {
+async function migrateData(data) {
   // Migrate preset names for existing products
   if (data.products && Array.isArray(data.products)) {
     data.products = data.products.map(product => {
@@ -78,12 +78,24 @@ function migrateData(data) {
   
   // Migrate existing orders to have Etsy source
   if (data.orders && Array.isArray(data.orders)) {
+    let ordersUpdated = false;
     data.orders = data.orders.map(order => {
       if (!order.source) {
+        ordersUpdated = true;
         return { ...order, source: 'Etsy' };
       }
       return order;
     });
+    
+    // If we updated any orders, save them back to the file
+    if (ordersUpdated) {
+      console.log('Migrated orders to add Etsy source - saving updated data');
+      try {
+        await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
+      } catch (error) {
+        console.error('Error saving migrated data:', error);
+      }
+    }
   }
   
   // Ensure all new presets are available
@@ -102,7 +114,7 @@ async function readData() {
   try {
     const data = await fs.readFile(DATA_FILE, 'utf8');
     const parsedData = JSON.parse(data);
-    return migrateData(parsedData);
+    return await migrateData(parsedData);
   } catch (error) {
     console.error('Error reading data file:', error);
     return DEFAULT_DATA;
