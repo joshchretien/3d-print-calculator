@@ -485,7 +485,7 @@
                 <div>
                     <h2 className="text-2xl font-bold mb-6 text-gray-800">Products</h2>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
                             <h3 className="text-lg font-semibold text-gray-800 mb-2">Total Products</h3>
                             <p className="text-3xl font-bold text-blue-600">{totalProducts}</p>
@@ -504,29 +504,28 @@
                                 })}
                             </div>
                         </div>
-                    </div>
-
-                    <div className="mb-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
-                        <h3 className="text-lg font-semibold mb-4 text-gray-800">Global Discount</h3>
-                        <div className="flex gap-4 items-end">
-                            <div className="flex-1">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Discount Percentage</label>
-                                <input
-                                    type="number"
-                                    value={state.globalDiscount !== undefined ? state.globalDiscount : 25}
-                                    onChange={(e) => dispatch({ type: ACTIONS.SET_VALUE, key: "globalDiscount", value: Number(e.target.value) })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                                    min="0"
-                                    max="100"
-                                    step="1"
-                                />
+                        <div className="bg-orange-50 rounded-xl shadow-lg p-6 border border-orange-200">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-2">Global Discount</h3>
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Discount Percentage</label>
+                                    <input
+                                        type="number"
+                                        value={state.globalDiscount !== undefined ? state.globalDiscount : 25}
+                                        onChange={(e) => dispatch({ type: ACTIONS.SET_VALUE, key: "globalDiscount", value: Number(e.target.value) })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => dispatch({ type: ACTIONS.SET_VALUE, key: "globalDiscount", value: 25 })}
+                                    className="w-full bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+                                >
+                                    Reset to 25%
+                                </button>
                             </div>
-                            <button
-                                onClick={() => dispatch({ type: ACTIONS.SET_VALUE, key: "globalDiscount", value: 25 })}
-                                className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
-                            >
-                                Reset to 25%
-                            </button>
                         </div>
                     </div>
                     
