@@ -144,6 +144,22 @@ PORT=3000
 
 ## 🔄 Version History
 
+### v1.0.4 - Nanoleaf Product Support (October 2025)
+- ✅ Added Nanoleaf brand preset with 1 and 30 count options
+- ✅ Custom pricing multipliers: 1 count (19.5x), 30 count (8x)
+- ✅ Filament-based cost calculation for Nanoleaf products
+- ✅ Replaced application title with Deliciosa Decor logo
+
+### v1.0.3 - Logo Integration (October 2025)
+- ✅ Added Deliciosa Decor logo to replace text title
+- ✅ Created assets folder for logo storage
+- ✅ Updated header branding
+
+### v1.0.2 - Logo Integration (October 2025)
+- ✅ Added Deliciosa Decor logo to replace text title
+- ✅ Created assets folder for logo storage
+- ✅ Updated header branding
+
 ### v1.0.1 - Auto-Deploy Setup (October 2025)
 - ✅ Enabled automatic deployment on GitHub commits
 - ✅ Set up professional development workflow

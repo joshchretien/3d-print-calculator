@@ -10,6 +10,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - TBD
 
+## [1.0.4] - 2025-10-04
+
+### Added
+- Nanoleaf brand product support with custom preset
+- 1 count option with 19.5x multiplier
+- 30 count option with 8x multiplier
+- Filament-based pricing calculation for Nanoleaf products
+
+### Changed
+- Updated version to 1.0.4
+- Enhanced product management with brand-specific pricing
+
+## [1.0.3] - 2025-10-04
+
+### Added
+- Deliciosa Decor logo integration
+- Assets folder for logo storage
+- Professional branding in application header
+
+### Changed
+- Replaced text title with company logo
+- Updated header styling for logo display
+
+## [1.0.2] - 2025-10-04
+
+### Added
+- Deliciosa Decor logo integration
+- Assets folder for logo storage
+- Professional branding in application header
+
+### Changed
+- Replaced text title with company logo
+- Updated header styling for logo display
+
 ## [1.0.1] - 2025-10-04
 
 ### Added
