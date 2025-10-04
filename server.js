@@ -76,6 +76,16 @@ function migrateData(data) {
     });
   }
   
+  // Migrate existing orders to have Etsy source
+  if (data.orders && Array.isArray(data.orders)) {
+    data.orders = data.orders.map(order => {
+      if (!order.source) {
+        return { ...order, source: 'Etsy' };
+      }
+      return order;
+    });
+  }
+  
   // Ensure all new presets are available
   if (!data.multipliers) {
     data.multipliers = {};
