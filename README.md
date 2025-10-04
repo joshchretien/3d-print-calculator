@@ -164,7 +164,7 @@ This project is proprietary software developed for Deliciosa Decor. All rights r
 
 **Lead Developer**: Josh Chretien  
 **Company**: Deliciosa Decor  
-**Contact**: josh@deliciosadecor.com
+**Contact**: orders@deliciosadecor.com
 
 ---
 
