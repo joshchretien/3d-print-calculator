@@ -46,6 +46,7 @@
                 return `$${value.toFixed(2)}`;
             },
             today: () => new Date().toISOString().slice(0, 10),
+            now: () => new Date().toISOString(),
             pad2: (n) => String(n).padStart(2, "0"),
             estTime: (count) => {
                 const minutes = count * CONSTANTS.ESTIMATED_TIME_PER_UNIT;
@@ -138,7 +139,7 @@
                 case ACTIONS.DELETE_ORDER:
                     return { ...state, orders: state.orders.filter((o) => o.id !== action.id) };
                 case ACTIONS.BULK_MARK_PAID:
-                    return { ...state, orders: state.orders.map((o) => action.ids.includes(o.id) ? { ...o, status: "Paid", paidOn: utils.today() } : o) };
+                    return { ...state, orders: state.orders.map((o) => action.ids.includes(o.id) ? { ...o, status: "Paid", paidOn: action.paidOn || utils.now() } : o) };
                 case ACTIONS.INITIALIZE:
                     return { ...state, ...action.payload };
                 default:
@@ -509,7 +510,7 @@
                     alert("Please select a style");
                     return;
                 }
-                const product = { id: utils.uid(), brand: brand.trim(), model: model.trim(), style: style.trim(), preset, filamentPerItem: filamentValue, counts: countsFromPreset(preset), createdOn: utils.today() };
+                const product = { id: utils.uid(), brand: brand.trim(), model: model.trim(), style: style.trim(), preset, filamentPerItem: filamentValue, counts: countsFromPreset(preset), createdOn: utils.now() };
                 product.title = titleOf(product);
                 dispatch({ type: ACTIONS.ADD_PRODUCT, product });
                 setBrand("");
@@ -884,7 +885,7 @@
                 return orders.filter(order => order.status === 'Paid');
             }, [orders]);
 
-            // Sort orders by creation date (newest at bottom for unpaid orders)
+            // Sort orders by creation timestamp (newest at bottom for unpaid orders)
             const sortedUnpaidOrders = useMemo(() => {
                 return [...unpaidOrders].sort((a, b) => new Date(a.createdOn || a.created || '') - new Date(b.createdOn || b.created || ''));
             }, [unpaidOrders]);
@@ -913,15 +914,15 @@
                 });
             }, []);
 
-            // Group paid orders by payout date (always use today's date for display)
+            // Group paid orders by payout date (use paidOn timestamp for grouping)
             const payoutsByDate = useMemo(() => {
                 const grouped = {};
                 paidOrders.forEach(order => {
-                    // Always use today's date for payout display
-                    const payoutDate = utils.today();
-                    if (!grouped[payoutDate]) {
-                        grouped[payoutDate] = {
-                            date: payoutDate,
+                    // Use the paidOn timestamp to extract the date for grouping
+                    const paidOnDate = order.paidOn ? order.paidOn.slice(0, 10) : utils.today();
+                    if (!grouped[paidOnDate]) {
+                        grouped[paidOnDate] = {
+                            date: paidOnDate,
                             orders: [],
                             totalEtsyPayout: 0,
                             totalTjShare: 0,
@@ -929,11 +930,11 @@
                             totalProductionCost: 0
                         };
                     }
-                    grouped[payoutDate].orders.push(order);
-                    grouped[payoutDate].totalEtsyPayout += order.etsyPayout || 0;
-                    grouped[payoutDate].totalTjShare += order.tjShare || 0;
-                    grouped[payoutDate].totalJoshShare += order.joshShare || 0;
-                    grouped[payoutDate].totalProductionCost += order.productionCost || 0;
+                    grouped[paidOnDate].orders.push(order);
+                    grouped[paidOnDate].totalEtsyPayout += order.etsyPayout || 0;
+                    grouped[paidOnDate].totalTjShare += order.tjShare || 0;
+                    grouped[paidOnDate].totalJoshShare += order.joshShare || 0;
+                    grouped[paidOnDate].totalProductionCost += order.productionCost || 0;
                 });
                 return Object.values(grouped).sort((a, b) => new Date(b.date) - new Date(a.date));
             }, [paidOrders]);
@@ -944,7 +945,8 @@
                     return;
                 }
                 if (confirm(`Are you sure you want to mark ${selectedOrderIds.size} order(s) as paid?`)) {
-                    dispatch({ type: ACTIONS.BULK_MARK_PAID, ids: Array.from(selectedOrderIds) });
+                    const currentTime = utils.now();
+                    dispatch({ type: ACTIONS.BULK_MARK_PAID, ids: Array.from(selectedOrderIds), paidOn: currentTime });
                     setSelectedOrderIds(new Set());
                 }
             }, [selectedOrderIds, dispatch]);
@@ -1016,7 +1018,7 @@
                     joshShare: joshShare,
                     items: items,
                     status: "Unpaid",
-                    createdOn: utils.today()
+                    createdOn: utils.now()
                 };
                 
                 dispatch({ type: ACTIONS.ADD_ORDER, order });
@@ -1034,7 +1036,7 @@
             }, [dispatch]);
 
             const markOrderPaid = useCallback((orderId) => {
-                dispatch({ type: ACTIONS.UPDATE_ORDER, id: orderId, updates: { status: "Paid", paidOn: utils.today() } });
+                dispatch({ type: ACTIONS.UPDATE_ORDER, id: orderId, updates: { status: "Paid", paidOn: utils.now() } });
             }, [dispatch]);
 
             const totalTjShare = useMemo(() => {
@@ -1246,16 +1248,11 @@
                                         const etsyOrders = orders.filter(o => o.source === 'Etsy' || !o.source);
                                         const websiteOrders = orders.filter(o => o.source === 'Website');
                                         
-                                        // For Etsy: Find the most recent order by creation date, then by order number
+                                        // For Etsy: Find the most recent order by creation timestamp
                                         let lastEtsyOrder = null;
                                         if (etsyOrders.length > 0) {
-                                            // Sort all Etsy orders by creation date, then by order number (highest first)
-                                            lastEtsyOrder = etsyOrders.sort((a, b) => {
-                                                const dateCompare = new Date(b.createdOn || '') - new Date(a.createdOn || '');
-                                                if (dateCompare !== 0) return dateCompare;
-                                                // If dates are the same, sort by order number (highest first)
-                                                return parseInt(b.orderNumber || '0') - parseInt(a.orderNumber || '0');
-                                            })[0];
+                                            // Sort all Etsy orders by creation timestamp (newest first)
+                                            lastEtsyOrder = etsyOrders.sort((a, b) => new Date(b.createdOn || '') - new Date(a.createdOn || ''))[0];
                                         }
                                         
                                         // For Website: Find the order with the highest order number
