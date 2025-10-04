@@ -45,7 +45,9 @@ const DEFAULT_DATA = {
     "adv-1|5|30|60|90|120": { 1: 20.5, 5: 12.5, 30: 8.5, 60: 7.5, 90: 6.5, 120: 6 },
     "adv-1|5|12|36|72|108": { 1: 20.5, 5: 12.5, 12: 10.5, 36: 7.5, 72: 7.5, 108: 6.5 },
     "Power Supply": { 1: 60 },
-    "Prism": { 36: 19.5, 54: 11.5, 72: 10.75 }
+    "Prism": { 36: 19.5, 54: 11.5, 72: 10.75 },
+    "Nanoleaf Advanced": { 1: 19.5, 30: 8 },
+    "Nanoleaf 8MM": { 1: 49.5, 30: 22 }
   },
   orders: [],
   globalDiscount: 25,
@@ -62,11 +64,35 @@ async function ensureDataFile() {
   }
 }
 
+// Helper function to migrate data
+function migrateData(data) {
+  // Migrate preset names for existing products
+  if (data.products && Array.isArray(data.products)) {
+    data.products = data.products.map(product => {
+      if (product.preset === "nanoleaf-30") {
+        return { ...product, preset: "Nanoleaf Advanced" };
+      }
+      return product;
+    });
+  }
+  
+  // Ensure all new presets are available
+  if (!data.multipliers) {
+    data.multipliers = {};
+  }
+  
+  // Merge with default multipliers to ensure new presets are available
+  data.multipliers = { ...DEFAULT_DATA.multipliers, ...data.multipliers };
+  
+  return data;
+}
+
 // Helper function to read data
 async function readData() {
   try {
     const data = await fs.readFile(DATA_FILE, 'utf8');
-    return JSON.parse(data);
+    const parsedData = JSON.parse(data);
+    return migrateData(parsedData);
   } catch (error) {
     console.error('Error reading data file:', error);
     return DEFAULT_DATA;
