@@ -1246,11 +1246,16 @@
                                         const etsyOrders = orders.filter(o => o.source === 'Etsy' || !o.source);
                                         const websiteOrders = orders.filter(o => o.source === 'Website');
                                         
-                                        // For Etsy: Find the most recent order by creation date
+                                        // For Etsy: Find the most recent order by creation date, then by order number
                                         let lastEtsyOrder = null;
                                         if (etsyOrders.length > 0) {
-                                            // Sort all Etsy orders by creation date and get the most recent
-                                            lastEtsyOrder = etsyOrders.sort((a, b) => new Date(b.createdOn || '') - new Date(a.createdOn || ''))[0];
+                                            // Sort all Etsy orders by creation date, then by order number (highest first)
+                                            lastEtsyOrder = etsyOrders.sort((a, b) => {
+                                                const dateCompare = new Date(b.createdOn || '') - new Date(a.createdOn || '');
+                                                if (dateCompare !== 0) return dateCompare;
+                                                // If dates are the same, sort by order number (highest first)
+                                                return parseInt(b.orderNumber || '0') - parseInt(a.orderNumber || '0');
+                                            })[0];
                                         }
                                         
                                         // For Website: Find the order with the highest order number
