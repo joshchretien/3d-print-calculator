@@ -1,11 +1,17 @@
 {
   "name": "3d-print-calculator",
   "version": "1.0.0",
-  "description": "3D Print Pricing Calculator for Deliciosa Decor",
+  "description": "A comprehensive business management system for 3D printing operations featuring advanced pricing calculations, order management, packaging optimization, and financial analytics.",
   "main": "server.js",
+  "homepage": "https://dashboard.deliciosadecor.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/joshchretien/3d-print-calculator.git"
+  },
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "version": "echo $npm_package_version"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -14,7 +20,21 @@
   "engines": {
     "node": "18.x"
   },
-  "keywords": ["3d-printing", "calculator", "pricing"],
-  "author": "Deliciosa Decor",
-  "license": "MIT"
+  "keywords": [
+    "3d-printing",
+    "calculator",
+    "pricing",
+    "business-management",
+    "order-tracking",
+    "packaging",
+    "financial-analytics",
+    "deliciosa-decor"
+  ],
+  "author": {
+    "name": "Josh Chretien",
+    "email": "josh@deliciosadecor.com",
+    "url": "https://deliciosadecor.com"
+  },
+  "license": "UNLICENSED",
+  "private": true
 }
