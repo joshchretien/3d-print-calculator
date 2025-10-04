@@ -80,6 +80,9 @@
             if (preset === "Prism") {
                 return [36, 54, 72];
             }
+            if (preset === "nanoleaf-30") {
+                return [1, 30];
+            }
             return stripAdv(preset).split("|").map((c) => parseInt(String(c).trim(), 10)).filter((c) => !isNaN(c) && c > 0);
         };
 
