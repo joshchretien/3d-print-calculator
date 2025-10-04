@@ -302,6 +302,20 @@
         "90": "18x12x2",
         "120": "18x12x2"
       }
+    },
+    {
+      "id": "p6djai88",
+      "brand": "Nanoleaf",
+      "model": "Smart Multicolor",
+      "style": "Advanced",
+      "preset": "Nanoleaf Advanced",
+      "filamentPerItem": 20.77,
+      "counts": [
+        1,
+        30
+      ],
+      "createdOn": "2025-10-04",
+      "title": "Nanoleaf Smart Multicolor — Advanced"
     }
   ],
   "brands": [
@@ -372,6 +386,14 @@
       "36": 13.18,
       "54": 12.65,
       "72": 12.15
+    },
+    "Nanoleaf Advanced": {
+      "1": 19.5,
+      "30": 8
+    },
+    "Nanoleaf 8MM": {
+      "1": 49.5,
+      "30": 22
     }
   },
   "orders": [
@@ -387,7 +409,8 @@
       "joshShare": 8.976000000000003,
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "7n9sg6c7",
@@ -401,7 +424,8 @@
       "joshShare": 5.043000000000001,
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "pcoqfl5i",
@@ -415,7 +439,8 @@
       "joshShare": 3.357000000000001,
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "gta90dpt",
@@ -429,7 +454,8 @@
       "joshShare": 16.569000000000003,
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "4zwr5kbb",
@@ -443,7 +469,8 @@
       "joshShare": 20.427000000000003,
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "kuz2tjm9",
@@ -457,7 +484,8 @@
       "joshShare": 8.16,
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "q6q6wn0c",
@@ -471,7 +499,8 @@
       "joshShare": 8.997000000000002,
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "ukwy8cx9",
@@ -485,7 +514,8 @@
       "joshShare": 4.7970000000000015,
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "4ci59ixn",
@@ -499,7 +529,8 @@
       "joshShare": 5.751,
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "t4xv2mqq",
@@ -513,7 +544,8 @@
       "joshShare": 2.289,
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "jnl4sijd",
@@ -527,7 +559,8 @@
       "joshShare": 7.809000000000004,
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "mxb82lba",
@@ -559,7 +592,8 @@
       ],
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "x6astw33",
@@ -582,7 +616,8 @@
       ],
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "6eqdonlt",
@@ -623,7 +658,8 @@
       ],
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "4rwlncz1",
@@ -646,7 +682,8 @@
       ],
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "2psfsn8q",
@@ -669,7 +706,8 @@
       ],
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "pl0y3t05",
@@ -692,7 +730,8 @@
       ],
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "fs7ts1mj",
@@ -715,7 +754,8 @@
       ],
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "h2bwepun",
@@ -738,7 +778,8 @@
       ],
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "03u08shg",
@@ -761,7 +802,8 @@
       ],
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "pjbnq07l",
@@ -784,7 +826,8 @@
       ],
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "bma06jh0",
@@ -807,7 +850,8 @@
       ],
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
     },
     {
       "id": "lywx7yoa",
@@ -830,7 +874,63 @@
       ],
       "status": "Paid",
       "createdOn": "2025-10-04",
-      "paidOn": "2025-10-04"
+      "paidOn": "2025-10-04",
+      "source": "Etsy"
+    },
+    {
+      "id": "zh40216o",
+      "source": "Website",
+      "orderNumber": "100914",
+      "etsyPayout": 130.09,
+      "shippingCost": 9.61,
+      "productionCost": 32.53,
+      "tjShare": 94.095,
+      "joshShare": 26.385000000000005,
+      "items": [
+        {
+          "id": "qortajrt",
+          "productId": "z6gm5t98",
+          "productTitle": "Eufy E22 — Advanced",
+          "count": 90,
+          "quantity": 1,
+          "totalCount": 90,
+          "productionCost": 30.82
+        },
+        {
+          "id": "2teh1abu",
+          "productId": "z6gm5t98",
+          "productTitle": "Eufy E22 — Advanced",
+          "count": 5,
+          "quantity": 1,
+          "totalCount": 5,
+          "productionCost": 1.71
+        }
+      ],
+      "status": "Unpaid",
+      "createdOn": "2025-10-04"
+    },
+    {
+      "id": "zqj60ej4",
+      "source": "Website",
+      "orderNumber": "101282",
+      "etsyPayout": 0.43,
+      "shippingCost": 4.24,
+      "productionCost": 0.26,
+      "tjShare": -2.5890000000000004,
+      "joshShare": -1.2210000000000003,
+      "items": [
+        {
+          "id": "282a078m",
+          "productId": "zrfy1gis",
+          "productTitle": "Govee Pro — Advanced",
+          "count": 1,
+          "quantity": 1,
+          "totalCount": 1,
+          "productionCost": 0.26
+        }
+      ],
+      "status": "Unpaid",
+      "createdOn": "2025-10-04"
     }
   ],
   "packagingOptions": [

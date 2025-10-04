@@ -198,19 +198,40 @@
                 const response = await fetch('/api/data');
                 if (response.ok) {
                     const data = await response.json();
+                    console.log("✅ Data loaded from server");
                     return migrateState(data);
     } else {
                     console.warn("Failed to load state from server:", response.status);
-                    return { ...defaultState };
+                    // Fallback to localStorage
+                    return loadFromLocalStorage();
                 }
             } catch (error) {
                 console.warn("Failed to load state from server:", error);
+                // Fallback to localStorage
+                return loadFromLocalStorage();
+            }
+        };
+
+        const loadFromLocalStorage = () => {
+            try {
+                const saved = localStorage.getItem(CONSTANTS.LS_KEY);
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    console.log("✅ Data loaded from localStorage backup");
+                    return migrateState(data);
+                } else {
+                    console.log("No saved data found, using defaults");
+                    return { ...defaultState };
+                }
+            } catch (error) {
+                console.error("Failed to load from localStorage:", error);
                 return { ...defaultState };
             }
         };
 
         const saveState = async (state) => {
             try {
+                // Save to server
                 const response = await fetch('/api/data', {
                     method: 'POST',
                     headers: {
@@ -219,10 +240,29 @@
                     body: JSON.stringify(state),
                 });
                 if (!response.ok) {
-                    console.warn("Failed to save state to server:", response.status);
+                    throw new Error(`Server save failed: ${response.status}`);
                 }
+                
+                // Also save to localStorage as backup
+                try {
+                    localStorage.setItem(CONSTANTS.LS_KEY, JSON.stringify(state));
+                } catch (localError) {
+                    console.warn("Failed to save to localStorage:", localError);
+                }
+                
+                console.log("✅ Data auto-saved successfully");
+                return Promise.resolve();
             } catch (error) {
                 console.warn("Failed to save state to server:", error);
+                // Fallback to localStorage only
+                try {
+                    localStorage.setItem(CONSTANTS.LS_KEY, JSON.stringify(state));
+                    console.log("✅ Data saved to localStorage as backup");
+                    return Promise.resolve(); // Still consider this a success
+                } catch (localError) {
+                    console.error("Failed to save to localStorage:", localError);
+                    return Promise.reject(localError);
+                }
             }
         };
 
@@ -1206,18 +1246,11 @@
                                         const etsyOrders = orders.filter(o => o.source === 'Etsy' || !o.source);
                                         const websiteOrders = orders.filter(o => o.source === 'Website');
                                         
-                                        // For Etsy: Find the bottom-most order (last in unpaid list, or most recent in payouts)
+                                        // For Etsy: Find the most recent order by creation date
                                         let lastEtsyOrder = null;
-                                        const unpaidEtsyOrders = etsyOrders.filter(o => o.status === 'Unpaid');
-                                        if (unpaidEtsyOrders.length > 0) {
-                                            // Get the last (bottom-most) unpaid Etsy order
-                                            lastEtsyOrder = unpaidEtsyOrders.sort((a, b) => new Date(a.createdOn) - new Date(b.createdOn))[unpaidEtsyOrders.length - 1];
-                                        } else {
-                                            // If no unpaid Etsy orders, get the most recent paid Etsy order
-                                            const paidEtsyOrders = etsyOrders.filter(o => o.status === 'Paid');
-                                            if (paidEtsyOrders.length > 0) {
-                                                lastEtsyOrder = paidEtsyOrders.sort((a, b) => new Date(b.paidOn || b.createdOn) - new Date(a.paidOn || a.createdOn))[0];
-                                            }
+                                        if (etsyOrders.length > 0) {
+                                            // Sort all Etsy orders by creation date and get the most recent
+                                            lastEtsyOrder = etsyOrders.sort((a, b) => new Date(b.createdOn || '') - new Date(a.createdOn || ''))[0];
                                         }
                                         
                                         // For Website: Find the order with the highest order number
@@ -1673,6 +1706,7 @@
             const [state, dispatch] = useReducer(reducer, defaultState);
             const [tab, setTab] = useState("products");
             const [isLoading, setIsLoading] = useState(true);
+            const [saveStatus, setSaveStatus] = useState("ready"); // "ready", "saving", "saved", "error"
 
             useEffect(() => {
                 const initializeApp = async () => {
@@ -1690,7 +1724,16 @@
 
             useEffect(() => {
                 if (!isLoading) {
-                    saveState(state);
+                    setSaveStatus("saving");
+                    saveState(state).then(() => {
+                        setSaveStatus("saved");
+                        // Clear the "saved" status after 2 seconds
+                        setTimeout(() => setSaveStatus("ready"), 2000);
+                    }).catch(() => {
+                        setSaveStatus("error");
+                        // Clear the "error" status after 5 seconds
+                        setTimeout(() => setSaveStatus("ready"), 5000);
+                    });
                 }
             }, [state, isLoading]);
 
@@ -1713,21 +1756,47 @@
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                             <div className="flex justify-between items-center h-16">
                                 <img src="assets/logo.png" alt="Deliciosa Decor" className="h-10" />
-                                <nav className="flex space-x-8">
-                                    {tabs.map(([key, label]) => (
-                                        <button
-                                            key={key}
-                                            onClick={() => setTab(key)}
-                                            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                                                tab === key
-                                                    ? "bg-blue-100 text-blue-700"
-                                                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                                            }`}
-                                        >
-                                            {label}
-                                        </button>
-                                    ))}
-                                </nav>
+                                <div className="flex items-center space-x-8">
+                                    <nav className="flex space-x-8">
+                                        {tabs.map(([key, label]) => (
+                                            <button
+                                                key={key}
+                                                onClick={() => setTab(key)}
+                                                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                                                    tab === key
+                                                        ? "bg-blue-100 text-blue-700"
+                                                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                                                }`}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </nav>
+                                    <div className="flex items-center">
+                                        {saveStatus === "saving" && (
+                                            <div className="flex items-center text-sm text-blue-600">
+                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                                                Saving...
+                                            </div>
+                                        )}
+                                        {saveStatus === "saved" && (
+                                            <div className="flex items-center text-sm text-green-600">
+                                                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                </svg>
+                                                Saved
+                                            </div>
+                                        )}
+                                        {saveStatus === "error" && (
+                                            <div className="flex items-center text-sm text-red-600">
+                                                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                </svg>
+                                                Save Error
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </header>
