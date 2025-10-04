@@ -162,6 +162,15 @@
             } else {
                 state.multipliers = { ...DEFAULT_MULTIPLIERS, ...state.multipliers };
             }
+
+            // Migrate preset names for existing products
+            state.products = state.products.map(product => {
+                if (product.preset === "nanoleaf-30") {
+                    return { ...product, preset: "Nanoleaf Advanced" };
+                }
+                return product;
+            });
+
             return state;
         };
 
