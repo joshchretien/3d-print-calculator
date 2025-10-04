@@ -8,9 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Version tracking system
-- Comprehensive README documentation
-- CHANGELOG for tracking future updates
+- TBD
+
+## [1.0.1] - 2025-10-04
+
+### Added
+- Automatic deployment on GitHub commits
+- Professional development workflow setup
+- Local development with instant testing capabilities
+
+### Changed
+- Updated version to 1.0.1
+- Enhanced documentation with auto-deploy information
 
 ## [1.0.0] - 2025-10-04
 

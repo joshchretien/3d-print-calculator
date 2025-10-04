@@ -144,6 +144,11 @@ PORT=3000
 
 ## 🔄 Version History
 
+### v1.0.1 - Auto-Deploy Setup (October 2025)
+- ✅ Enabled automatic deployment on GitHub commits
+- ✅ Set up professional development workflow
+- ✅ Local development with instant testing
+
 ### v1.0.0 - Initial Release (October 2025)
 - ✅ Complete product management system
 - ✅ Advanced order tracking with financial calculations
