@@ -1271,8 +1271,10 @@
                                         value={orderNumber}
                                         onChange={(e) => {
                                             setOrderNumber(e.target.value);
-                                            // Auto-lookup shipping cost when order number is entered
+                                            // Auto-expand when order number is entered
                                             if (e.target.value.trim()) {
+                                                setShowAddOrder(true);
+                                                // Auto-lookup shipping cost when order number is entered
                                                 lookupShippingCost(e.target.value.trim());
                                             }
                                         }}
