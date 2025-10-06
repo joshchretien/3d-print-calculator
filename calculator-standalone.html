@@ -842,8 +842,6 @@
             const [orderNumber, setOrderNumber] = useState("");
             const [etsyPayout, setEtsyPayout] = useState("");
             const [shippingCost, setShippingCost] = useState("");
-            const [shippingCostLoading, setShippingCostLoading] = useState(false);
-            const [shippingCostError, setShippingCostError] = useState("");
             const [orderItems, setOrderItems] = useState([{ id: utils.uid(), product: "", count: "", quantity: 1 }]);
             const [expandedPayouts, setExpandedPayouts] = useState(new Set());
             

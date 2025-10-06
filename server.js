@@ -181,7 +181,8 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
         if (!order) {
             return res.status(404).json({ 
                 error: 'Order not found',
-                message: `Order ${orderNumber} not found in ShipStation`
+                message: `Order ${orderNumber} not found in ShipStation`,
+                searchedOrderNumber: orderNumber
             });
         }
 
