@@ -10,6 +10,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - TBD
 
+## [1.2.0] - 2025-01-03
+
+### Added
+- **ShipStation API Integration**
+  - Automatic shipping cost lookup via ShipStation API
+  - Real-time API connectivity with loading indicators
+  - Error handling and user feedback for API failures
+  - Environment variable configuration for API credentials
+- **Enhanced Add Order Workflow**
+  - Always-visible order number field optimized for barcode scanning
+  - Auto-expand order details section after successful API lookup
+  - Improved user experience with visual scanning instructions
+  - Smart auto-focus on order number field for seamless barcode input
+- **Prism Product Support**
+  - Added Prism 12 count with 15x multiplier
+  - Enhanced product preset system for Prism configurations
+  - Automatic data migration for existing Prism products
+
+### Changed
+- **Order Entry Process**
+  - Redesigned Add Order section with two-tier layout
+  - Moved source and order number to always-visible top section
+  - Collapsible order details section for better workflow
+  - Enhanced shipping cost field with real-time lookup status
+- **Server Configuration**
+  - Updated ShipStation API endpoint with proper authentication
+  - Improved server startup messages with API status indicators
+  - Enhanced environment variable handling for production deployment
+
+### Fixed
+- **Data Migration**
+  - Fixed Prism count 12 missing from existing products
+  - Improved server-side data migration for new product configurations
+  - Enhanced client-side data preservation during updates
+- **Authentication**
+  - Resolved password protection looping issue
+  - Updated authentication to use environment variables with fallbacks
+
 ## [1.0.4] - 2025-10-04
 
 ### Added

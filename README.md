@@ -144,6 +144,16 @@ PORT=3000
 
 ## 🔄 Version History
 
+### v1.2.0 - ShipStation API Integration (January 2025)
+- ✅ **ShipStation API Integration**: Automatic shipping cost lookup
+- ✅ **Enhanced Add Order Workflow**: Always-visible order number field for barcode scanning
+- ✅ **Auto-Expand Functionality**: Order details auto-expand after successful API lookup
+- ✅ **Prism Product Support**: Added Prism 12 count with 15x multiplier
+- ✅ **Visual Feedback**: Loading indicators and error handling for API calls
+- ✅ **Improved UX**: Smart auto-focus and barcode-friendly interface
+- ✅ **Data Migration**: Fixed Prism count 12 missing from existing products
+- ✅ **Authentication Fix**: Resolved password protection looping issue
+
 ### v1.0.4 - Nanoleaf Product Support (October 2025)
 - ✅ Added Nanoleaf brand preset with 1 and 30 count options
 - ✅ Custom pricing multipliers: 1 count (19.5x), 30 count (8x)
