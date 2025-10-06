@@ -24,8 +24,11 @@ const authenticate = (req, res, next) => {
     const credentials = Buffer.from(auth.slice(6), 'base64').toString();
     const [username, password] = credentials.split(':');
     
-    // Simple hardcoded credentials - in production, use environment variables
-    if (username === 'admin' && password === 'deliciosa2024') {
+    // Use environment variables for authentication
+    const expectedUsername = process.env.AUTH_USERNAME || 'admin';
+    const expectedPassword = process.env.AUTH_PASSWORD || 'deliciosa2024';
+    
+    if (username === expectedUsername && password === expectedPassword) {
         next();
     } else {
         res.setHeader('WWW-Authenticate', 'Basic realm="3D Print Calculator"');
