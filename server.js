@@ -5,8 +5,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ShipStation API configuration
-const SHIPSTATION_API_KEY = process.env.SHIPSTATION_API_KEY || '';
-const SHIPSTATION_API_SECRET = process.env.SHIPSTATION_API_SECRET || '';
+const SHIPSTATION_API_KEY = process.env.SHIPSTATION_API_KEY || '96c1dc6ed6ff4b7398e47284ce7763de';
+const SHIPSTATION_API_SECRET = process.env.SHIPSTATION_API_SECRET || '55cf2319bdb445cf8520722d3e0ee35f';
 const SHIPSTATION_BASE_URL = 'https://ssapi.shipstation.com';
 
 // Middleware
@@ -245,5 +245,8 @@ app.get('/api/shipstation/test', async (req, res) => {
 // Start server
 app.listen(PORT, () => {
     console.log(`3D Print Calculator server running on port ${PORT}`);
-    console.log(`ShipStation API configured: ${SHIPSTATION_API_KEY ? 'Yes' : 'No'}`);
+    console.log(`ShipStation API configured: ${SHIPSTATION_API_KEY && SHIPSTATION_API_SECRET ? 'Yes' : 'No'}`);
+    if (SHIPSTATION_API_KEY && SHIPSTATION_API_SECRET) {
+        console.log(`ShipStation API Key: ${SHIPSTATION_API_KEY.substring(0, 8)}...`);
+    }
 });
