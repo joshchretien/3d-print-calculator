@@ -63,7 +63,18 @@ const migrateData = async (data) => {
                 product.preset = "Nanoleaf Advanced";
                 updated = true;
             }
+            // Update Prism products to include count 12
+            if (product.preset === "Prism" && product.counts && !product.counts.includes(12)) {
+                product.counts = [12, ...product.counts];
+                updated = true;
+            }
         });
+    }
+    
+    // Migrate multipliers to include Prism count 12
+    if (data.multipliers && data.multipliers.Prism && !data.multipliers.Prism["12"]) {
+        data.multipliers.Prism["12"] = 15;
+        updated = true;
     }
     
     // Migrate orders to have source field
