@@ -1058,13 +1058,25 @@
 
             // ShipStation API lookup function
             const lookupShippingCost = useCallback(async (orderNumber) => {
-                if (!orderNumber || orderNumber.length < 3) return; // Don't lookup for very short inputs
-                
-                setShippingCostLoading(true);
-                setShippingCostError('');
-                
                 try {
-                    const response = await fetch(`/api/shipstation/order/${encodeURIComponent(orderNumber)}`, {
+                    // Safety checks
+                    if (!orderNumber || typeof orderNumber !== 'string') {
+                        console.log('Invalid order number provided to lookupShippingCost');
+                        return;
+                    }
+                    
+                    const trimmedOrderNumber = orderNumber.trim();
+                    if (trimmedOrderNumber.length < 3) {
+                        console.log('Order number too short, skipping lookup');
+                        return;
+                    }
+                    
+                    console.log(`Starting shipping cost lookup for order: ${trimmedOrderNumber}`);
+                    
+                    setShippingCostLoading(true);
+                    setShippingCostError('');
+                    
+                    const response = await fetch(`/api/shipstation/order/${encodeURIComponent(trimmedOrderNumber)}`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1072,26 +1084,23 @@
                     });
                     
                     if (!response.ok) {
-                        const errorData = await response.json();
+                        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
                         throw new Error(errorData.message || `HTTP ${response.status}`);
                     }
                     
                     const data = await response.json();
-                    setShippingCost(data.shippingCost.toFixed(2));
                     
-                    // Auto-expand the order details section after successful lookup
-                    console.log('Auto-expanding order details section...');
-                    setShowAddOrder(true);
-                    
-                    console.log(`Shipping cost lookup successful for order ${orderNumber}: $${data.shippingCost.toFixed(2)}`);
+                    // Safety check for data
+                    if (data && typeof data.shippingCost === 'number') {
+                        setShippingCost(data.shippingCost.toFixed(2));
+                        console.log(`Shipping cost lookup successful for order ${trimmedOrderNumber}: $${data.shippingCost.toFixed(2)}`);
+                    } else {
+                        throw new Error('Invalid response from ShipStation API');
+                    }
                     
                 } catch (error) {
                     console.error('Shipping cost lookup failed:', error);
                     setShippingCostError(error.message || 'Failed to lookup shipping cost');
-                    
-                    // Still auto-expand even if lookup fails, so user can enter shipping cost manually
-                    console.log('Auto-expanding order details section despite lookup failure...');
-                    setShowAddOrder(true);
                 } finally {
                     setShippingCostLoading(false);
                 }
@@ -1270,12 +1279,23 @@
                                         type="text"
                                         value={orderNumber}
                                         onChange={(e) => {
-                                            setOrderNumber(e.target.value);
-                                            // Auto-expand when order number is entered
-                                            if (e.target.value.trim()) {
-                                                setShowAddOrder(true);
-                                                // Auto-lookup shipping cost when order number is entered
-                                                lookupShippingCost(e.target.value.trim());
+                                            try {
+                                                const value = e.target.value || '';
+                                                console.log('Order number input changed:', value);
+                                                setOrderNumber(value);
+                                                
+                                                // Auto-expand when order number is entered
+                                                if (value.trim()) {
+                                                    console.log('Auto-expanding order details section...');
+                                                    setShowAddOrder(true);
+                                                    
+                                                    // Auto-lookup shipping cost when order number is entered
+                                                    setTimeout(() => {
+                                                        lookupShippingCost(value.trim());
+                                                    }, 100); // Small delay to prevent rapid API calls
+                                                }
+                                            } catch (error) {
+                                                console.error('Error in order number onChange:', error);
                                             }
                                         }}
                                         placeholder="Scan barcode or enter order number"
