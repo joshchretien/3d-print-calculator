@@ -1080,6 +1080,7 @@
                     setShippingCost(data.shippingCost.toFixed(2));
                     
                     // Auto-expand the order details section after successful lookup
+                    console.log('Auto-expanding order details section...');
                     setShowAddOrder(true);
                     
                     console.log(`Shipping cost lookup successful for order ${orderNumber}: $${data.shippingCost.toFixed(2)}`);
@@ -1087,6 +1088,10 @@
                 } catch (error) {
                     console.error('Shipping cost lookup failed:', error);
                     setShippingCostError(error.message || 'Failed to lookup shipping cost');
+                    
+                    // Still auto-expand even if lookup fails, so user can enter shipping cost manually
+                    console.log('Auto-expanding order details section despite lookup failure...');
+                    setShowAddOrder(true);
                 } finally {
                     setShippingCostLoading(false);
                 }
