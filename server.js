@@ -1,174 +1,235 @@
 const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
-const cors = require('cors');
-
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, 'data.json');
+
+// ShipStation API configuration
+const SHIPSTATION_API_KEY = process.env.SHIPSTATION_API_KEY || '';
+const SHIPSTATION_API_SECRET = process.env.SHIPSTATION_API_SECRET || '';
+const SHIPSTATION_BASE_URL = 'https://ssapi.shipstation.com';
 
 // Middleware
-app.use(cors());
 app.use(express.json());
+app.use(express.static('.'));
 
-// Basic Authentication Middleware
-app.use((req, res, next) => {
-  const auth = { 
-    login: process.env.AUTH_USERNAME || 'admin', 
-    password: process.env.AUTH_PASSWORD || 'password123' 
-  };
-  
-  const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
-  const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
-  
-  if (login && password && login === auth.login && password === auth.password) {
-    return next();
-  }
-  
-  res.set('WWW-Authenticate', 'Basic realm="401"');
-  res.status(401).send('Authentication required.');
-});
+// Basic authentication middleware
+const authenticate = (req, res, next) => {
+    const auth = req.headers.authorization;
+    if (!auth || !auth.startsWith('Basic ')) {
+        res.setHeader('WWW-Authenticate', 'Basic realm="3D Print Calculator"');
+        return res.status(401).send('Authentication required');
+    }
+    
+    const credentials = Buffer.from(auth.slice(6), 'base64').toString();
+    const [username, password] = credentials.split(':');
+    
+    // Simple hardcoded credentials - in production, use environment variables
+    if (username === 'admin' && password === 'deliciosa2024') {
+        next();
+    } else {
+        res.setHeader('WWW-Authenticate', 'Basic realm="3D Print Calculator"');
+        return res.status(401).send('Invalid credentials');
+    }
+};
+
+// Apply authentication to all routes
+app.use(authenticate);
 
 // Default data structure
 const DEFAULT_DATA = {
-  products: [],
-  brands: ["Govee", "Eufy", "Nanoleaf"],
-  styles: ["Advanced", "8MM"],
-  rollCosts: [{
-    id: Math.random().toString(36).slice(2, 10),
-    value: 25,
-    date: new Date().toISOString().slice(0, 10)
-  }],
-  multipliers: {
-    "1|5|30|60|90|120": { 1: 50.5, 5: 35.5, 30: 25.5, 60: 18.5, 90: 16.5, 120: 14.5 },
-    "1|5|12|36|72|108": { 1: 50.5, 5: 35.5, 12: 30.5, 36: 25.5, 72: 22.5, 108: 20.5 },
-    "adv-1|5|30|60|90|120": { 1: 20.5, 5: 12.5, 30: 8.5, 60: 7.5, 90: 6.5, 120: 6 },
-    "adv-1|5|12|36|72|108": { 1: 20.5, 5: 12.5, 12: 10.5, 36: 7.5, 72: 7.5, 108: 6.5 },
-    "Power Supply": { 1: 60 },
-    "Prism": { 36: 19.5, 54: 11.5, 72: 10.75 },
-    "Nanoleaf Advanced": { 1: 19.5, 30: 8 },
-    "Nanoleaf 8MM": { 1: 49.5, 30: 22 }
-  },
-  orders: [],
-  globalDiscount: 25,
-  packagingOptions: ["WT-ENV", "OR-ENV", "BLK-ENV", "6x6x6", "7x7x7", "18x12x2"]
+    products: [],
+    orders: [],
+    rollCosts: [],
+    multipliers: {
+        "1|5|30|60|90|120": { 1: 6.5, 5: 3.5, 30: 2, 60: 1.8, 90: 1.6, 120: 1.5 },
+        "Prism": { 12: 15, 36: 19.5, 54: 11.5, 72: 10.75 },
+        "Nanoleaf Advanced": { 1: 19.5, 30: 8 },
+        "Nanoleaf 8MM": { 1: 49.5, 30: 22 }
+    }
 };
 
-// Helper function to ensure data file exists
-async function ensureDataFile() {
-  try {
-    await fs.access(DATA_FILE);
-  } catch (error) {
-    // File doesn't exist, create it with default data
-    await fs.writeFile(DATA_FILE, JSON.stringify(DEFAULT_DATA, null, 2));
-  }
-}
-
-// Helper function to migrate data
-async function migrateData(data) {
-  // Migrate preset names for existing products
-  if (data.products && Array.isArray(data.products)) {
-    data.products = data.products.map(product => {
-      if (product.preset === "nanoleaf-30") {
-        return { ...product, preset: "Nanoleaf Advanced" };
-      }
-      return product;
-    });
-  }
-  
-  // Migrate existing orders to have Etsy source
-  if (data.orders && Array.isArray(data.orders)) {
-    let ordersUpdated = false;
-    data.orders = data.orders.map(order => {
-      if (!order.source) {
-        ordersUpdated = true;
-        return { ...order, source: 'Etsy' };
-      }
-      return order;
-    });
+// Data migration function
+const migrateData = async (data) => {
+    let updated = false;
     
-    // If we updated any orders, save them back to the file
-    if (ordersUpdated) {
-      console.log('Migrated orders to add Etsy source - saving updated data');
-      try {
-        await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
-      } catch (error) {
-        console.error('Error saving migrated data:', error);
-      }
+    // Migrate product presets
+    if (data.products) {
+        data.products.forEach(product => {
+            if (product.preset === "nanoleaf-30") {
+                product.preset = "Nanoleaf Advanced";
+                updated = true;
+            }
+        });
     }
-  }
-  
-  // Ensure all new presets are available
-  if (!data.multipliers) {
-    data.multipliers = {};
-  }
-  
-  // Merge with default multipliers to ensure new presets are available
-  data.multipliers = { ...DEFAULT_DATA.multipliers, ...data.multipliers };
-  
-  return data;
-}
-
-// Helper function to read data
-async function readData() {
-  try {
-    const data = await fs.readFile(DATA_FILE, 'utf8');
-    const parsedData = JSON.parse(data);
-    return await migrateData(parsedData);
-  } catch (error) {
-    console.error('Error reading data file:', error);
-    return DEFAULT_DATA;
-  }
-}
-
-// Helper function to write data
-async function writeData(data) {
-  try {
-    await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
-    return true;
-  } catch (error) {
-    console.error('Error writing data file:', error);
-    return false;
-  }
-}
-
-// Routes
-app.get('/api/data', async (req, res) => {
-  try {
-    await ensureDataFile();
-    const data = await readData();
-    res.json(data);
-  } catch (error) {
-    console.error('Error getting data:', error);
-    res.status(500).json({ error: 'Failed to read data' });
-  }
-});
-
-app.post('/api/data', async (req, res) => {
-  try {
-    await ensureDataFile();
-    const success = await writeData(req.body);
-    if (success) {
-      res.json({ success: true });
-    } else {
-      res.status(500).json({ error: 'Failed to save data' });
+    
+    // Migrate orders to have source field
+    if (data.orders) {
+        data.orders.forEach(order => {
+            if (!order.source) {
+                order.source = 'Etsy';
+                updated = true;
+            }
+        });
     }
-  } catch (error) {
-    console.error('Error saving data:', error);
-    res.status(500).json({ error: 'Failed to save data' });
-  }
-});
+    
+    // Save migrated data if changes were made
+    if (updated) {
+        await fs.writeFile('data.json', JSON.stringify(data, null, 2));
+        console.log('Data migrated and saved');
+    }
+    
+    return data;
+};
 
-// Redirect root to calculator
+// Read data from file
+const readData = async () => {
+    try {
+        const data = await fs.readFile('data.json', 'utf8');
+        const parsedData = JSON.parse(data);
+        return await migrateData(parsedData);
+    } catch (error) {
+        console.log('Creating new data file with defaults');
+        await fs.writeFile('data.json', JSON.stringify(DEFAULT_DATA, null, 2));
+        return DEFAULT_DATA;
+    }
+};
+
+// ShipStation API helper function
+const getShipStationAuth = () => {
+    if (!SHIPSTATION_API_KEY || !SHIPSTATION_API_SECRET) {
+        throw new Error('ShipStation API credentials not configured');
+    }
+    return Buffer.from(`${SHIPSTATION_API_KEY}:${SHIPSTATION_API_SECRET}`).toString('base64');
+};
+
+// API Routes
 app.get('/', (req, res) => {
-  res.redirect('/calculator-standalone.html');
+    res.redirect('/calculator-standalone.html');
 });
 
-// Serve static files
-app.use(express.static(__dirname));
+// Get application data
+app.get('/api/data', async (req, res) => {
+    try {
+        const data = await readData();
+        res.json(data);
+    } catch (error) {
+        console.error('Error reading data:', error);
+        res.status(500).json({ error: 'Failed to read data' });
+    }
+});
+
+// Save application data
+app.post('/api/data', async (req, res) => {
+    try {
+        await fs.writeFile('data.json', JSON.stringify(req.body, null, 2));
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error saving data:', error);
+        res.status(500).json({ error: 'Failed to save data' });
+    }
+});
+
+// ShipStation API - Lookup order shipping cost
+app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
+    try {
+        const { orderNumber } = req.params;
+        
+        if (!SHIPSTATION_API_KEY || !SHIPSTATION_API_SECRET) {
+            return res.status(503).json({ 
+                error: 'ShipStation API not configured',
+                message: 'Please configure ShipStation API credentials in environment variables'
+            });
+        }
+
+        // ShipStation API call to get orders
+        const response = await fetch(`${SHIPSTATION_BASE_URL}/orders`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Basic ${getShipStationAuth()}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`ShipStation API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        // Find the order by order number
+        const order = data.orders?.find(o => 
+            o.orderNumber === orderNumber || 
+            o.externalOrderNumber === orderNumber ||
+            o.orderKey === orderNumber
+        );
+
+        if (!order) {
+            return res.status(404).json({ 
+                error: 'Order not found',
+                message: `Order ${orderNumber} not found in ShipStation`
+            });
+        }
+
+        // Extract shipping cost from the order
+        const shippingCost = order.shippingAmount || order.shippingCost || 0;
+        
+        res.json({
+            orderNumber: order.orderNumber,
+            shippingCost: parseFloat(shippingCost),
+            orderDate: order.orderDate,
+            customerName: order.customer?.name,
+            status: order.orderStatus
+        });
+
+    } catch (error) {
+        console.error('ShipStation API error:', error);
+        res.status(500).json({ 
+            error: 'Failed to lookup shipping cost',
+            message: error.message
+        });
+    }
+});
+
+// ShipStation API - Test connection
+app.get('/api/shipstation/test', async (req, res) => {
+    try {
+        if (!SHIPSTATION_API_KEY || !SHIPSTATION_API_SECRET) {
+            return res.status(503).json({ 
+                error: 'ShipStation API not configured',
+                message: 'Please configure SHIPSTATION_API_KEY and SHIPSTATION_API_SECRET environment variables'
+            });
+        }
+
+        // Test API connection with a simple request
+        const response = await fetch(`${SHIPSTATION_BASE_URL}/accounts/listtags`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Basic ${getShipStationAuth()}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`ShipStation API error: ${response.status} ${response.statusText}`);
+        }
+
+        res.json({ 
+            success: true,
+            message: 'ShipStation API connection successful'
+        });
+
+    } catch (error) {
+        console.error('ShipStation API test error:', error);
+        res.status(500).json({ 
+            error: 'ShipStation API connection failed',
+            message: error.message
+        });
+    }
+});
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-  console.log(`Calculator available at http://localhost:${PORT}/calculator-standalone.html`);
+    console.log(`3D Print Calculator server running on port ${PORT}`);
+    console.log(`ShipStation API configured: ${SHIPSTATION_API_KEY ? 'Yes' : 'No'}`);
 });
