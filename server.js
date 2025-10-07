@@ -174,11 +174,7 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
         console.log(`ShipStation API response for order ${orderNumber}:`, {
             totalOrders: data.orders?.length || 0,
             hasOrders: !!data.orders,
-            firstOrder: data.orders?.[0] ? {
-                orderNumber: data.orders[0].orderNumber,
-                shippingAmount: data.orders[0].shippingAmount,
-                shippingCost: data.orders[0].shippingCost
-            } : null
+            fullOrderObject: data.orders?.[0] || null
         });
         
         // Since we filtered by order number, the first result should be our order
@@ -192,8 +188,22 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
             });
         }
 
-        // Extract shipping cost from the order
-        const shippingCost = order.shippingAmount || order.shippingCost || 0;
+        // Extract shipping cost from the order - try multiple possible fields
+        const shippingCost = order.shippingAmount || 
+                           order.shippingCost || 
+                           order.shipmentCost || 
+                           order.shippingPrice ||
+                           order.amountPaid ||
+                           0;
+        
+        console.log(`Shipping cost fields for order ${orderNumber}:`, {
+            shippingAmount: order.shippingAmount,
+            shippingCost: order.shippingCost,
+            shipmentCost: order.shipmentCost,
+            shippingPrice: order.shippingPrice,
+            amountPaid: order.amountPaid,
+            selectedCost: shippingCost
+        });
         
         res.json({
             orderNumber: order.orderNumber,
