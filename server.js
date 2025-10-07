@@ -9,6 +9,11 @@ const SHIPSTATION_API_KEY = process.env.SHIPSTATION_API_KEY || '96c1dc6ed6ff4b73
 const SHIPSTATION_API_SECRET = process.env.SHIPSTATION_API_SECRET || '55cf2319bdb445cf8520722d3e0ee35f';
 const SHIPSTATION_BASE_URL = 'https://ssapi.shipstation.com';
 
+// WooCommerce API Configuration
+const WOOCOMMERCE_URL = 'https://deliciosadecor.com';
+const WOOCOMMERCE_CONSUMER_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY || 'ck_f803a6e8b509e5cc726bbc2fc2a1116d9879f372';
+const WOOCOMMERCE_CONSUMER_SECRET = process.env.WOOCOMMERCE_CONSUMER_SECRET || 'cs_b888ae2b936a35ff6f9a42542defd0d3ce3e6686';
+
 // Middleware
 app.use(express.json());
 app.use(express.static('.'));
@@ -271,6 +276,45 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
             storeId: order.advancedOptions?.storeId,
             detectedSource: detectedSource
         });
+
+        // If this is a Website order, also fetch WooCommerce payout info
+        let wooCommerceData = null;
+        if (detectedSource === 'Website') {
+            try {
+                console.log(`Fetching WooCommerce payout data for Website order ${orderNumber}...`);
+                
+                const wooResponse = await fetch(`${WOOCOMMERCE_URL}/wp-json/wc/v3/orders?search=${encodeURIComponent(orderNumber)}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Basic ${Buffer.from(`${WOOCOMMERCE_CONSUMER_KEY}:${WOOCOMMERCE_CONSUMER_SECRET}`).toString('base64')}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (wooResponse.ok) {
+                    const wooOrders = await wooResponse.json();
+                    const wooOrder = wooOrders?.find(o => o.number === orderNumber || o.id.toString() === orderNumber);
+                    
+                    if (wooOrder) {
+                        const orderTotal = parseFloat(wooOrder.total);
+                        const stripeFee = Math.round((orderTotal * 0.029 + 0.30) * 100) / 100;
+                        const stripePayout = Math.round((orderTotal - stripeFee) * 100) / 100;
+                        
+                        wooCommerceData = {
+                            orderTotal: orderTotal,
+                            stripeFee: stripeFee,
+                            stripePayout: stripePayout,
+                            status: wooOrder.status,
+                            paymentMethod: wooOrder.payment_method
+                        };
+                        
+                        console.log(`WooCommerce payout data for order ${orderNumber}:`, wooCommerceData);
+                    }
+                }
+            } catch (wooError) {
+                console.error(`Error fetching WooCommerce data for order ${orderNumber}:`, wooError);
+            }
+        }
         
         res.json({
             orderNumber: order.orderNumber,
@@ -280,13 +324,97 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
             status: order.orderStatus,
             source: detectedSource,
             marketplaceId: order.marketplaceId,
-            marketplaceName: order.marketplaceName
+            marketplaceName: order.marketplaceName,
+            wooCommerce: wooCommerceData
         });
 
     } catch (error) {
         console.error('ShipStation API error:', error);
         res.status(500).json({ 
             error: 'Failed to lookup shipping cost',
+            message: error.message
+        });
+    }
+});
+
+// WooCommerce API - Lookup order payout
+app.get('/api/woocommerce/order/:orderNumber', async (req, res) => {
+    try {
+        const { orderNumber } = req.params;
+        
+        if (!WOOCOMMERCE_CONSUMER_KEY || !WOOCOMMERCE_CONSUMER_SECRET) {
+            return res.status(503).json({ 
+                error: 'WooCommerce API not configured',
+                message: 'Please configure WooCommerce API credentials'
+            });
+        }
+
+        // WooCommerce API call to get order by number
+        const response = await fetch(`${WOOCOMMERCE_URL}/wp-json/wc/v3/orders?search=${encodeURIComponent(orderNumber)}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Basic ${Buffer.from(`${WOOCOMMERCE_CONSUMER_KEY}:${WOOCOMMERCE_CONSUMER_SECRET}`).toString('base64')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`WooCommerce API error: ${response.status} ${response.statusText}`);
+        }
+
+        const orders = await response.json();
+        
+        console.log(`WooCommerce API response for order ${orderNumber}:`, {
+            totalOrders: orders?.length || 0,
+            orders: orders?.map(o => ({
+                id: o.id,
+                number: o.number,
+                status: o.status,
+                total: o.total,
+                payment_method: o.payment_method
+            })) || []
+        });
+        
+        // Find the exact order by number
+        const order = orders?.find(o => o.number === orderNumber || o.id.toString() === orderNumber);
+
+        if (!order || !orders || orders.length === 0) {
+            return res.status(404).json({ 
+                error: 'Order not found',
+                message: `Order ${orderNumber} not found in WooCommerce`,
+                searchedOrderNumber: orderNumber
+            });
+        }
+
+        // Calculate Stripe payout (Order Total - Stripe Fee)
+        // Stripe typically charges 2.9% + 30¢ for online transactions
+        const orderTotal = parseFloat(order.total);
+        const stripeFee = Math.round((orderTotal * 0.029 + 0.30) * 100) / 100; // 2.9% + 30¢, rounded to 2 decimals
+        const stripePayout = Math.round((orderTotal - stripeFee) * 100) / 100;
+        
+        console.log(`WooCommerce payout calculation for order ${orderNumber}:`, {
+            orderTotal: orderTotal,
+            stripeFee: stripeFee,
+            stripePayout: stripePayout
+        });
+        
+        res.json({
+            orderNumber: order.number,
+            orderTotal: orderTotal,
+            stripeFee: stripeFee,
+            stripePayout: stripePayout,
+            orderDate: order.date_created,
+            status: order.status,
+            paymentMethod: order.payment_method,
+            customerName: order.billing?.first_name && order.billing?.last_name ? 
+                         `${order.billing.first_name} ${order.billing.last_name}` : 
+                         order.billing?.first_name || 'Unknown'
+        });
+
+    } catch (error) {
+        console.error('WooCommerce API error:', error);
+        res.status(500).json({ 
+            error: 'Failed to lookup WooCommerce order',
             message: error.message
         });
     }
@@ -333,7 +461,12 @@ app.get('/api/shipstation/test', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`3D Print Calculator server running on port ${PORT}`);
     console.log(`ShipStation API configured: ${SHIPSTATION_API_KEY && SHIPSTATION_API_SECRET ? 'Yes' : 'No'}`);
+    console.log(`WooCommerce API configured: ${WOOCOMMERCE_CONSUMER_KEY && WOOCOMMERCE_CONSUMER_SECRET ? 'Yes' : 'No'}`);
     if (SHIPSTATION_API_KEY && SHIPSTATION_API_SECRET) {
         console.log(`ShipStation API Key: ${SHIPSTATION_API_KEY.substring(0, 8)}...`);
+    }
+    if (WOOCOMMERCE_CONSUMER_KEY && WOOCOMMERCE_CONSUMER_SECRET) {
+        console.log(`WooCommerce URL: ${WOOCOMMERCE_URL}`);
+        console.log(`WooCommerce Consumer Key: ${WOOCOMMERCE_CONSUMER_KEY.substring(0, 8)}...`);
     }
 });

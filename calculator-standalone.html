@@ -1102,6 +1102,12 @@
                             setSource(data.source);
                             console.log(`Auto-detected source for order ${trimmedOrderNumber}: ${data.source}`);
                         }
+                        
+                        // Auto-set payout amount if WooCommerce data is available
+                        if (data.wooCommerce && data.source === 'Website') {
+                            setEtsyPayout(data.wooCommerce.stripePayout.toFixed(2));
+                            console.log(`Auto-populated WooCommerce payout for order ${trimmedOrderNumber}: $${data.wooCommerce.stripePayout.toFixed(2)}`);
+                        }
                     } else {
                         throw new Error('Invalid response from ShipStation API');
                     }
