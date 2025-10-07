@@ -220,30 +220,12 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
                     if (shipmentsData.shipments && shipmentsData.shipments.length > 0) {
                         const shipment = shipmentsData.shipments[0];
                         
-                        // Try multiple possible field names for shipping cost
-                        shippingCost = shipment.cost || 
-                                      shipment.shipCost || 
-                                      shipment.shippingCost || 
-                                      shipment.rate || 
-                                      shipment.shipmentCost || 
-                                      shipment.carrierCost ||
-                                      shipment.labelCost ||
-                                      shipment.postageCost ||
-                                      shipment.amount ||
-                                      shipment.price ||
-                                      0;
+                        // Use the correct field name from ShipStation API documentation
+                        shippingCost = shipment.shipmentCost || 0;
                         
-                        console.log(`Shipping cost extraction attempt for order ${orderNumber}:`, {
-                            cost: shipment.cost,
-                            shipCost: shipment.shipCost,
-                            shippingCost: shipment.shippingCost,
-                            rate: shipment.rate,
+                        console.log(`Shipping cost found for order ${orderNumber}:`, {
+                            shipmentId: shipment.shipmentId,
                             shipmentCost: shipment.shipmentCost,
-                            carrierCost: shipment.carrierCost,
-                            labelCost: shipment.labelCost,
-                            postageCost: shipment.postageCost,
-                            amount: shipment.amount,
-                            price: shipment.price,
                             finalShippingCost: shippingCost
                         });
                     }
