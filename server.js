@@ -202,17 +202,34 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
             shipmentCost: order.shipmentCost,
             shippingPrice: order.shippingPrice,
             amountPaid: order.amountPaid,
+            orderTotal: order.orderTotal,
+            orderSubtotal: order.orderSubtotal,
+            taxAmount: order.taxAmount,
             selectedCost: shippingCost
         });
         
         // Determine source from order data
         let detectedSource = 'Website'; // Default to Website
-        if (order.marketplaceId === 'etsy' || 
-            order.externalOrderNumber?.toLowerCase().includes('etsy') ||
-            order.marketplaceName?.toLowerCase().includes('etsy') ||
-            order.orderNumber?.length > 8) { // Etsy orders typically have longer numbers
+        
+        // Check multiple indicators for Etsy orders
+        const isEtsy = order.marketplaceId === 'etsy' || 
+                      order.externalOrderNumber?.toLowerCase().includes('etsy') ||
+                      order.marketplaceName?.toLowerCase().includes('etsy') ||
+                      order.orderNumber?.length > 8 || // Etsy orders typically have longer numbers
+                      order.advancedOptions?.storeId === 350545; // Specific store ID for Etsy
+        
+        if (isEtsy) {
             detectedSource = 'Etsy';
         }
+        
+        console.log(`Source detection for order ${orderNumber}:`, {
+            marketplaceId: order.marketplaceId,
+            marketplaceName: order.marketplaceName,
+            externalOrderNumber: order.externalOrderNumber,
+            orderNumberLength: order.orderNumber?.length,
+            storeId: order.advancedOptions?.storeId,
+            detectedSource: detectedSource
+        });
         
         res.json({
             orderNumber: order.orderNumber,
