@@ -156,8 +156,8 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
             });
         }
 
-        // ShipStation API call to get orders
-        const response = await fetch(`${SHIPSTATION_BASE_URL}/orders`, {
+        // ShipStation API call to get orders with order number filter
+        const response = await fetch(`${SHIPSTATION_BASE_URL}/orders?orderNumber=${encodeURIComponent(orderNumber)}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Basic ${getShipStationAuth()}`,
@@ -171,14 +171,20 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
 
         const data = await response.json();
         
-        // Find the order by order number
-        const order = data.orders?.find(o => 
-            o.orderNumber === orderNumber || 
-            o.externalOrderNumber === orderNumber ||
-            o.orderKey === orderNumber
-        );
+        console.log(`ShipStation API response for order ${orderNumber}:`, {
+            totalOrders: data.orders?.length || 0,
+            hasOrders: !!data.orders,
+            firstOrder: data.orders?.[0] ? {
+                orderNumber: data.orders[0].orderNumber,
+                shippingAmount: data.orders[0].shippingAmount,
+                shippingCost: data.orders[0].shippingCost
+            } : null
+        });
+        
+        // Since we filtered by order number, the first result should be our order
+        const order = data.orders?.[0];
 
-        if (!order) {
+        if (!order || !data.orders || data.orders.length === 0) {
             return res.status(404).json({ 
                 error: 'Order not found',
                 message: `Order ${orderNumber} not found in ShipStation`,
