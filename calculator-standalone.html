@@ -1297,10 +1297,17 @@
                                                     console.log('Auto-expanding order details section...');
                                                     setShowAddOrder(true);
                                                     
-                                                    // Auto-lookup shipping cost when order number is entered
-                                                    setTimeout(() => {
+                                                    // Clear any existing timeout
+                                                    if (window.orderNumberTimeout) {
+                                                        clearTimeout(window.orderNumberTimeout);
+                                                    }
+                                                    
+                                                    // Wait for user to stop typing before making API call
+                                                    // Barcode scanners typically finish within 1-2 seconds
+                                                    window.orderNumberTimeout = setTimeout(() => {
+                                                        console.log(`Debounced API call for order: ${value.trim()}`);
                                                         lookupShippingCost(value.trim());
-                                                    }, 100); // Small delay to prevent rapid API calls
+                                                    }, 1500); // Wait 1.5 seconds after user stops typing
                                                 }
                                             } catch (error) {
                                                 console.error('Error in order number onChange:', error);
