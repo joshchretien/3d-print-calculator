@@ -205,12 +205,24 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
             selectedCost: shippingCost
         });
         
+        // Determine source from order data
+        let detectedSource = 'Website'; // Default to Website
+        if (order.marketplaceId === 'etsy' || 
+            order.externalOrderNumber?.toLowerCase().includes('etsy') ||
+            order.marketplaceName?.toLowerCase().includes('etsy') ||
+            order.orderNumber?.length > 8) { // Etsy orders typically have longer numbers
+            detectedSource = 'Etsy';
+        }
+        
         res.json({
             orderNumber: order.orderNumber,
             shippingCost: parseFloat(shippingCost),
             orderDate: order.orderDate,
             customerName: order.customer?.name,
-            status: order.orderStatus
+            status: order.orderStatus,
+            source: detectedSource,
+            marketplaceId: order.marketplaceId,
+            marketplaceName: order.marketplaceName
         });
 
     } catch (error) {

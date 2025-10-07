@@ -1096,6 +1096,12 @@
                     if (data && typeof data.shippingCost === 'number') {
                         setShippingCost(data.shippingCost.toFixed(2));
                         console.log(`Shipping cost lookup successful for order ${trimmedOrderNumber}: $${data.shippingCost.toFixed(2)}`);
+                        
+                        // Auto-set source field if provided by ShipStation
+                        if (data.source && (data.source === 'Etsy' || data.source === 'Website')) {
+                            setSource(data.source);
+                            console.log(`Auto-detected source for order ${trimmedOrderNumber}: ${data.source}`);
+                        }
                     } else {
                         throw new Error('Invalid response from ShipStation API');
                     }
