@@ -297,8 +297,42 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
                     
                     if (wooOrder) {
                         const orderTotal = parseFloat(wooOrder.total);
-                        const stripeFee = Math.round((orderTotal * 0.029 + 0.30) * 100) / 100;
-                        const stripePayout = Math.round((orderTotal - stripeFee) * 100) / 100;
+                        
+                        // Look for actual Stripe fee and payout in order meta data or fee lines
+                        let stripeFee = 0;
+                        let stripePayout = orderTotal; // Default to full amount if no fee found
+                        
+                        // Check if order has fee lines (WooCommerce stores Stripe fees here)
+                        if (wooOrder.fee_lines && wooOrder.fee_lines.length > 0) {
+                            const stripeFeeLine = wooOrder.fee_lines.find(fee => 
+                                fee.name && fee.name.toLowerCase().includes('stripe')
+                            );
+                            if (stripeFeeLine) {
+                                stripeFee = Math.abs(parseFloat(stripeFeeLine.total)); // Make positive
+                                stripePayout = Math.round((orderTotal - stripeFee) * 100) / 100;
+                            }
+                        }
+                        
+                        // If no fee lines found, try to calculate from order meta
+                        if (stripeFee === 0 && wooOrder.meta_data) {
+                            const stripeFeeMeta = wooOrder.meta_data.find(meta => 
+                                meta.key && (
+                                    meta.key.toLowerCase().includes('stripe_fee') ||
+                                    meta.key.toLowerCase().includes('payment_fee') ||
+                                    meta.key.toLowerCase().includes('gateway_fee')
+                                )
+                            );
+                            if (stripeFeeMeta) {
+                                stripeFee = Math.abs(parseFloat(stripeFeeMeta.value));
+                                stripePayout = Math.round((orderTotal - stripeFee) * 100) / 100;
+                            }
+                        }
+                        
+                        // Fallback to calculated fee if no actual fee found
+                        if (stripeFee === 0) {
+                            stripeFee = Math.round((orderTotal * 0.029 + 0.30) * 100) / 100; // 2.9% + 30¢
+                            stripePayout = Math.round((orderTotal - stripeFee) * 100) / 100;
+                        }
                         
                         wooCommerceData = {
                             orderTotal: orderTotal,
@@ -371,7 +405,9 @@ app.get('/api/woocommerce/order/:orderNumber', async (req, res) => {
                 number: o.number,
                 status: o.status,
                 total: o.total,
-                payment_method: o.payment_method
+                payment_method: o.payment_method,
+                fee_lines: o.fee_lines,
+                meta_data: o.meta_data?.slice(0, 5) // Show first 5 meta items for debugging
             })) || []
         });
         
@@ -386,11 +422,44 @@ app.get('/api/woocommerce/order/:orderNumber', async (req, res) => {
             });
         }
 
-        // Calculate Stripe payout (Order Total - Stripe Fee)
-        // Stripe typically charges 2.9% + 30¢ for online transactions
+        // Get actual Stripe payout from WooCommerce order data
         const orderTotal = parseFloat(order.total);
-        const stripeFee = Math.round((orderTotal * 0.029 + 0.30) * 100) / 100; // 2.9% + 30¢, rounded to 2 decimals
-        const stripePayout = Math.round((orderTotal - stripeFee) * 100) / 100;
+        
+        // Look for actual Stripe fee and payout in order meta data or fee lines
+        let stripeFee = 0;
+        let stripePayout = orderTotal; // Default to full amount if no fee found
+        
+        // Check if order has fee lines (WooCommerce stores Stripe fees here)
+        if (order.fee_lines && order.fee_lines.length > 0) {
+            const stripeFeeLine = order.fee_lines.find(fee => 
+                fee.name && fee.name.toLowerCase().includes('stripe')
+            );
+            if (stripeFeeLine) {
+                stripeFee = Math.abs(parseFloat(stripeFeeLine.total)); // Make positive
+                stripePayout = Math.round((orderTotal - stripeFee) * 100) / 100;
+            }
+        }
+        
+        // If no fee lines found, try to calculate from order meta
+        if (stripeFee === 0 && order.meta_data) {
+            const stripeFeeMeta = order.meta_data.find(meta => 
+                meta.key && (
+                    meta.key.toLowerCase().includes('stripe_fee') ||
+                    meta.key.toLowerCase().includes('payment_fee') ||
+                    meta.key.toLowerCase().includes('gateway_fee')
+                )
+            );
+            if (stripeFeeMeta) {
+                stripeFee = Math.abs(parseFloat(stripeFeeMeta.value));
+                stripePayout = Math.round((orderTotal - stripeFee) * 100) / 100;
+            }
+        }
+        
+        // Fallback to calculated fee if no actual fee found
+        if (stripeFee === 0) {
+            stripeFee = Math.round((orderTotal * 0.029 + 0.30) * 100) / 100; // 2.9% + 30¢
+            stripePayout = Math.round((orderTotal - stripeFee) * 100) / 100;
+        }
         
         console.log(`WooCommerce payout calculation for order ${orderNumber}:`, {
             orderTotal: orderTotal,
