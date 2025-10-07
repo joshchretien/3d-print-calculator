@@ -188,13 +188,52 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
             });
         }
 
-        // Extract shipping cost from the order - try multiple possible fields
-        const shippingCost = order.shippingAmount || 
-                           order.shippingCost || 
-                           order.shipmentCost || 
-                           order.shippingPrice ||
-                           order.amountPaid ||
-                           0;
+        // First try to get shipping cost from order fields
+        let shippingCost = order.shippingAmount || 
+                          order.shippingCost || 
+                          order.shipmentCost || 
+                          order.shippingPrice ||
+                          0;
+        
+        // If no shipping cost found on order, try to get it from shipments
+        if (!shippingCost || shippingCost === 0) {
+            try {
+                console.log(`No shipping cost on order, checking shipments for order ${orderNumber}...`);
+                
+                // Get shipments for this order
+                const shipmentsResponse = await fetch(`${SHIPSTATION_BASE_URL}/shipments?orderNumber=${encodeURIComponent(orderNumber)}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Basic ${getShipStationAuth()}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (shipmentsResponse.ok) {
+                    const shipmentsData = await shipmentsResponse.json();
+                    console.log(`Shipments response for order ${orderNumber}:`, {
+                        totalShipments: shipmentsData.shipments?.length || 0,
+                        shipments: shipmentsData.shipments?.map(s => ({
+                            shipmentId: s.shipmentId,
+                            cost: s.cost,
+                            shipCost: s.shipCost,
+                            shippingCost: s.shippingCost
+                        })) || []
+                    });
+                    
+                    // Get shipping cost from first shipment
+                    if (shipmentsData.shipments && shipmentsData.shipments.length > 0) {
+                        const shipment = shipmentsData.shipments[0];
+                        shippingCost = shipment.cost || shipment.shipCost || shipment.shippingCost || 0;
+                        console.log(`Found shipping cost in shipment: $${shippingCost}`);
+                    }
+                } else {
+                    console.log(`Failed to fetch shipments for order ${orderNumber}: ${shipmentsResponse.status}`);
+                }
+            } catch (shipmentError) {
+                console.error(`Error fetching shipments for order ${orderNumber}:`, shipmentError);
+            }
+        }
         
         console.log(`Shipping cost fields for order ${orderNumber}:`, {
             shippingAmount: order.shippingAmount,
