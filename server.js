@@ -213,19 +213,39 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
                     const shipmentsData = await shipmentsResponse.json();
                     console.log(`Shipments response for order ${orderNumber}:`, {
                         totalShipments: shipmentsData.shipments?.length || 0,
-                        shipments: shipmentsData.shipments?.map(s => ({
-                            shipmentId: s.shipmentId,
-                            cost: s.cost,
-                            shipCost: s.shipCost,
-                            shippingCost: s.shippingCost
-                        })) || []
+                        fullShipmentObject: shipmentsData.shipments?.[0] || null
                     });
                     
                     // Get shipping cost from first shipment
                     if (shipmentsData.shipments && shipmentsData.shipments.length > 0) {
                         const shipment = shipmentsData.shipments[0];
-                        shippingCost = shipment.cost || shipment.shipCost || shipment.shippingCost || 0;
-                        console.log(`Found shipping cost in shipment: $${shippingCost}`);
+                        
+                        // Try multiple possible field names for shipping cost
+                        shippingCost = shipment.cost || 
+                                      shipment.shipCost || 
+                                      shipment.shippingCost || 
+                                      shipment.rate || 
+                                      shipment.shipmentCost || 
+                                      shipment.carrierCost ||
+                                      shipment.labelCost ||
+                                      shipment.postageCost ||
+                                      shipment.amount ||
+                                      shipment.price ||
+                                      0;
+                        
+                        console.log(`Shipping cost extraction attempt for order ${orderNumber}:`, {
+                            cost: shipment.cost,
+                            shipCost: shipment.shipCost,
+                            shippingCost: shipment.shippingCost,
+                            rate: shipment.rate,
+                            shipmentCost: shipment.shipmentCost,
+                            carrierCost: shipment.carrierCost,
+                            labelCost: shipment.labelCost,
+                            postageCost: shipment.postageCost,
+                            amount: shipment.amount,
+                            price: shipment.price,
+                            finalShippingCost: shippingCost
+                        });
                     }
                 } else {
                     console.log(`Failed to fetch shipments for order ${orderNumber}: ${shipmentsResponse.status}`);
