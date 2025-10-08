@@ -1188,12 +1188,16 @@
                                         }
                                     }
                                     
-                                    return {
+                                    const orderItem = {
                                         id: utils.uid(),
                                         product: matchedProductId,
                                         count: matchedCount,
                                         quantity: item.quantity
                                     };
+                                    
+                                    console.log(`Final order item created:`, orderItem);
+                                    
+                                    return orderItem;
                                 });
                                 
                                 setOrderItems(newOrderItems);
