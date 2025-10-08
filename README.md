@@ -31,6 +31,8 @@ A comprehensive business management system designed specifically for 3D printing
 - **Payment Status**: Track paid vs. unpaid orders
 - **Payout Management**: Group orders by payment date with detailed breakdowns
 - **Revenue Analytics**: Total earnings, production costs, and profit margins
+- **Barcode Scanning**: Quick order entry with automatic data population
+- **API Integration**: Real-time data from ShipStation and WooCommerce
 
 ### 🔧 **Data Management**
 - **Import/Export**: JSON-based data portability
@@ -64,6 +66,8 @@ A comprehensive business management system designed specifically for 3D printing
 - **Express.js**: Web application framework
 - **CORS**: Cross-origin resource sharing
 - **File System API**: JSON-based data persistence
+- **ShipStation API**: Shipping cost integration
+- **WooCommerce API**: Order data and payout integration
 
 ### Deployment
 - **Kinsta**: Professional hosting platform
@@ -143,6 +147,16 @@ PORT=3000
 - **Business Analytics**: Revenue and profit analysis
 
 ## 🔄 Version History
+
+### v1.3.0 - WooCommerce API Integration (January 2025)
+- ✅ **WooCommerce API Integration**: Automatic payout calculation for Website orders
+- ✅ **Stripe Fee Detection**: Real-time Stripe fee calculation and payout deduction
+- ✅ **Source Auto-Detection**: Automatic Etsy vs Website order source identification
+- ✅ **Complete Order Automation**: Scan → Auto-populate all fields (source, shipping, payout)
+- ✅ **Debounced API Calls**: Optimized barcode scanning with 1.5s delay
+- ✅ **Default Orders Tab**: Application now opens to Orders tab by default
+- ✅ **Enhanced Error Handling**: Comprehensive API error handling and logging
+- ✅ **Production Ready**: Full integration with deliciosadecor.com WooCommerce store
 
 ### v1.2.0 - ShipStation API Integration (January 2025)
 - ✅ **ShipStation API Integration**: Automatic shipping cost lookup
