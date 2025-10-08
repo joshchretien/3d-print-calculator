@@ -1154,14 +1154,29 @@
                                         return false;
                                     });
                                     
+                                    let matchedCount = item.count;
+                                    
                                     if (matchingProduct) {
                                         matchedProductId = matchingProduct.id;
+                                        
+                                        // Try to match the count to available count options for this product
+                                        if (item.count && matchingProduct.counts) {
+                                            // First try exact match
+                                            if (matchingProduct.counts.includes(parseInt(item.count))) {
+                                                matchedCount = parseInt(item.count);
+                                            } else {
+                                                // Try to find the closest match
+                                                const availableCounts = matchingProduct.counts.map(c => parseInt(c));
+                                                const closestCount = availableCounts.find(c => c >= parseInt(item.count)) || availableCounts[0];
+                                                matchedCount = closestCount;
+                                            }
+                                        }
                                     }
                                     
                                     return {
                                         id: utils.uid(),
                                         product: matchedProductId,
-                                        count: item.count,
+                                        count: matchedCount,
                                         quantity: item.quantity
                                     };
                                 });
