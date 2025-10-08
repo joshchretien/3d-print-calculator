@@ -1107,6 +1107,19 @@
                         if (data.wooCommerce && data.source === 'Website') {
                             setEtsyPayout(data.wooCommerce.stripePayout.toFixed(2));
                             console.log(`Auto-populated WooCommerce payout for order ${trimmedOrderNumber}: $${data.wooCommerce.stripePayout.toFixed(2)}`);
+                            
+                            // Auto-populate line items if available
+                            if (data.wooCommerce.lineItems && data.wooCommerce.lineItems.length > 0) {
+                                const newOrderItems = data.wooCommerce.lineItems.map(item => ({
+                                    id: utils.uid(),
+                                    product: item.productName,
+                                    count: item.count,
+                                    quantity: item.quantity
+                                }));
+                                
+                                setOrderItems(newOrderItems);
+                                console.log(`Auto-populated ${newOrderItems.length} line items for order ${trimmedOrderNumber}:`, newOrderItems);
+                            }
                         }
                     } else {
                         throw new Error('Invalid response from ShipStation API');

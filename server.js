@@ -334,12 +334,24 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
                             stripePayout = Math.round((orderTotal - stripeFee) * 100) / 100;
                         }
                         
+                        // Process line items for auto-population
+                        const lineItems = [];
+                        if (wooOrder.line_items && wooOrder.line_items.length > 0) {
+                            for (const item of wooOrder.line_items) {
+                                const processedItem = processWooCommerceLineItem(item);
+                                if (processedItem) {
+                                    lineItems.push(processedItem);
+                                }
+                            }
+                        }
+                        
                         wooCommerceData = {
                             orderTotal: orderTotal,
                             stripeFee: stripeFee,
                             stripePayout: stripePayout,
                             status: wooOrder.status,
-                            paymentMethod: wooOrder.payment_method
+                            paymentMethod: wooOrder.payment_method,
+                            lineItems: lineItems
                         };
                         
                         console.log(`WooCommerce payout data for order ${orderNumber}:`, wooCommerceData);
@@ -371,6 +383,95 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
     }
 });
 
+// Helper function to process WooCommerce line items
+function processWooCommerceLineItem(item) {
+    try {
+        const productName = item.name || '';
+        const quantity = parseInt(item.quantity) || 1;
+        
+        // Extract simplified product info
+        let simplifiedProduct = '';
+        let count = '';
+        
+        // Product name mapping (simplified matching)
+        if (productName.toLowerCase().includes('eufy') && productName.toLowerCase().includes('e22')) {
+            if (productName.toLowerCase().includes('2.5') || productName.toLowerCase().includes('advanced')) {
+                simplifiedProduct = 'Eufy E22 — Advanced';
+            } else if (productName.toLowerCase().includes('8mm') || productName.toLowerCase().includes('8 mm')) {
+                simplifiedProduct = 'Eufy E22 — 8MM';
+            } else {
+                simplifiedProduct = 'Eufy E22 — Advanced'; // Default fallback
+            }
+        } else if (productName.toLowerCase().includes('govee') && productName.toLowerCase().includes('prism')) {
+            if (productName.toLowerCase().includes('2.5') || productName.toLowerCase().includes('advanced')) {
+                simplifiedProduct = 'Govee Prism — Advanced';
+            } else if (productName.toLowerCase().includes('8mm') || productName.toLowerCase().includes('8 mm')) {
+                simplifiedProduct = 'Govee Prism — 8MM';
+            } else {
+                simplifiedProduct = 'Govee Prism — Advanced'; // Default fallback
+            }
+        } else if (productName.toLowerCase().includes('govee') && !productName.toLowerCase().includes('prism')) {
+            if (productName.toLowerCase().includes('2.5') || productName.toLowerCase().includes('advanced')) {
+                simplifiedProduct = 'Govee Non-Pro — Advanced';
+            } else if (productName.toLowerCase().includes('8mm') || productName.toLowerCase().includes('8 mm')) {
+                simplifiedProduct = 'Govee Non-Pro — 8MM';
+            } else {
+                simplifiedProduct = 'Govee Non-Pro — Advanced'; // Default fallback
+            }
+        } else if (productName.toLowerCase().includes('nanoleaf')) {
+            simplifiedProduct = 'Nanoleaf Advanced'; // Default for nanoleaf
+        } else {
+            // Fallback - use original name
+            simplifiedProduct = productName;
+        }
+        
+        // Extract count from variant/attributes
+        if (item.variation && item.variation.length > 0) {
+            // Try to find count in variation attributes
+            for (const attr of item.variation) {
+                const attrValue = attr.value || '';
+                // Look for patterns like "90 Brackets", "5 Pack", etc.
+                const countMatch = attrValue.match(/(\d+)\s*(?:brackets?|pack|units?|count)/i);
+                if (countMatch) {
+                    count = countMatch[1];
+                    break;
+                }
+                // Look for patterns like "Just A 5 Pack!"
+                const packMatch = attrValue.match(/just\s*a\s*(\d+)\s*pack/i);
+                if (packMatch) {
+                    count = packMatch[1];
+                    break;
+                }
+            }
+        }
+        
+        // If no count found in variations, try to extract from product name
+        if (!count) {
+            const countMatch = productName.match(/(\d+)\s*(?:brackets?|pack|units?|count)/i);
+            if (countMatch) {
+                count = countMatch[1];
+            }
+        }
+        
+        // If still no count found, default to empty (user can fill manually)
+        if (!count) {
+            count = '';
+        }
+        
+        return {
+            productName: simplifiedProduct,
+            count: count,
+            quantity: quantity,
+            originalProductName: productName,
+            originalVariation: item.variation || []
+        };
+        
+    } catch (error) {
+        console.error('Error processing WooCommerce line item:', error);
+        return null;
+    }
+}
+
 // WooCommerce API - Lookup order payout
 app.get('/api/woocommerce/order/:orderNumber', async (req, res) => {
     try {
@@ -383,7 +484,7 @@ app.get('/api/woocommerce/order/:orderNumber', async (req, res) => {
             });
         }
 
-        // WooCommerce API call to get order by number
+        // WooCommerce API call to get order by number (include line items)
         const response = await fetch(`${WOOCOMMERCE_URL}/wp-json/wc/v3/orders?search=${encodeURIComponent(orderNumber)}`, {
             method: 'GET',
             headers: {
@@ -467,6 +568,19 @@ app.get('/api/woocommerce/order/:orderNumber', async (req, res) => {
             stripePayout: stripePayout
         });
         
+        // Process line items for auto-population
+        const lineItems = [];
+        if (order.line_items && order.line_items.length > 0) {
+            for (const item of order.line_items) {
+                const processedItem = processWooCommerceLineItem(item);
+                if (processedItem) {
+                    lineItems.push(processedItem);
+                }
+            }
+        }
+        
+        console.log(`WooCommerce line items processed for order ${orderNumber}:`, lineItems);
+        
         res.json({
             orderNumber: order.number,
             orderTotal: orderTotal,
@@ -477,7 +591,8 @@ app.get('/api/woocommerce/order/:orderNumber', async (req, res) => {
             paymentMethod: order.payment_method,
             customerName: order.billing?.first_name && order.billing?.last_name ? 
                          `${order.billing.first_name} ${order.billing.last_name}` : 
-                         order.billing?.first_name || 'Unknown'
+                         order.billing?.first_name || 'Unknown',
+            lineItems: lineItems
         });
 
     } catch (error) {
