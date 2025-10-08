@@ -31,8 +31,10 @@ A comprehensive business management system designed specifically for 3D printing
 - **Payment Status**: Track paid vs. unpaid orders
 - **Payout Management**: Group orders by payment date with detailed breakdowns
 - **Revenue Analytics**: Total earnings, production costs, and profit margins
-- **Barcode Scanning**: Quick order entry with automatic data population
+- **Automated Order Entry**: Complete barcode scanning workflow with full auto-population
 - **API Integration**: Real-time data from ShipStation and WooCommerce
+- **Smart Product Matching**: Automatic product and count detection from WooCommerce orders
+- **Source Detection**: Automatic Etsy vs Website order identification
 
 ### 🔧 **Data Management**
 - **Import/Export**: JSON-based data portability
@@ -66,8 +68,9 @@ A comprehensive business management system designed specifically for 3D printing
 - **Express.js**: Web application framework
 - **CORS**: Cross-origin resource sharing
 - **File System API**: JSON-based data persistence
-- **ShipStation API**: Shipping cost integration
-- **WooCommerce API**: Order data and payout integration
+- **ShipStation API**: Shipping cost integration and order lookup
+- **WooCommerce API**: Order data, payout calculation, and line item processing
+- **Smart Data Processing**: Intelligent product matching and count extraction
 
 ### Deployment
 - **Kinsta**: Professional hosting platform
@@ -132,11 +135,27 @@ PORT=3000
 - **Advanced Mounts**: Special pricing for advanced configurations
 - **Power Supplies**: Fixed pricing with dynamic quantity input
 
+## 🚀 Complete Automation Workflow
+
+### 📱 **Barcode Scanning → Complete Order Entry**
+1. **Scan Order Barcode** → Auto-populates order number
+2. **ShipStation Lookup** → Auto-populates shipping cost
+3. **WooCommerce Integration** → Auto-populates payout amount
+4. **Smart Product Matching** → Auto-populates product selection
+5. **Count Detection** → Auto-populates quantity counts
+6. **Source Detection** → Auto-sets Etsy/Website source
+7. **Click Add Order** → Done! 🎉
+
+### 🔄 **Supported Order Types**
+- **Etsy Orders**: ShipStation shipping cost + manual product entry
+- **Website Orders**: ShipStation shipping + WooCommerce payout + auto-product detection
+- **Mixed Orders**: Full automation with intelligent source detection
+
 ## 🎯 Use Cases
 
 ### For 3D Printing Businesses
 - **Product Catalog Management**: Organize and price 3D printed products
-- **Order Processing**: Streamline order fulfillment workflow
+- **Automated Order Processing**: Complete barcode-to-order workflow
 - **Financial Tracking**: Monitor profitability and cost structures
 - **Packaging Optimization**: Efficient packaging selection and planning
 
@@ -147,6 +166,14 @@ PORT=3000
 - **Business Analytics**: Revenue and profit analysis
 
 ## 🔄 Version History
+
+### v1.3.1 - Complete Automation & Smart Product Matching (January 2025)
+- ✅ **Smart Product Matching**: Automatic product detection from WooCommerce line items
+- ✅ **Intelligent Count Extraction**: Advanced parsing of product variations and attributes
+- ✅ **Full Order Auto-Population**: Complete order entry with product, count, and quantity
+- ✅ **Enhanced Debugging**: Comprehensive logging for troubleshooting and optimization
+- ✅ **Multi-Method Extraction**: Robust count detection from variations, meta_data, and product names
+- ✅ **Production Workflow**: Complete scan-to-order automation for maximum efficiency
 
 ### v1.3.0 - WooCommerce API Integration (January 2025)
 - ✅ **WooCommerce API Integration**: Automatic payout calculation for Website orders
