@@ -1110,12 +1110,61 @@
                             
                             // Auto-populate line items if available
                             if (data.wooCommerce.lineItems && data.wooCommerce.lineItems.length > 0) {
-                                const newOrderItems = data.wooCommerce.lineItems.map(item => ({
-                                    id: utils.uid(),
-                                    product: item.productName,
-                                    count: item.count,
-                                    quantity: item.quantity
-                                }));
+                                const newOrderItems = data.wooCommerce.lineItems.map(item => {
+                                    // Find matching product in our system
+                                    let matchedProductId = '';
+                                    
+                                    // Try to match the WooCommerce product name to our internal products
+                                    const matchingProduct = state.products.find(product => {
+                                        const wooProductLower = item.productName.toLowerCase();
+                                        const internalProductLower = product.title.toLowerCase();
+                                        
+                                        // Check for eufy E22 matches
+                                        if (wooProductLower.includes('eufy') && wooProductLower.includes('e22') && 
+                                            internalProductLower.includes('eufy') && internalProductLower.includes('e22')) {
+                                            if (wooProductLower.includes('2.5') && internalProductLower.includes('advanced')) {
+                                                return true;
+                                            } else if (wooProductLower.includes('8mm') && internalProductLower.includes('8mm')) {
+                                                return true;
+                                            }
+                                        }
+                                        
+                                        // Check for govee matches
+                                        if (wooProductLower.includes('govee') && internalProductLower.includes('govee')) {
+                                            if (wooProductLower.includes('prism') && internalProductLower.includes('prism')) {
+                                                if (wooProductLower.includes('2.5') && internalProductLower.includes('advanced')) {
+                                                    return true;
+                                                } else if (wooProductLower.includes('8mm') && internalProductLower.includes('8mm')) {
+                                                    return true;
+                                                }
+                                            } else if (!wooProductLower.includes('prism') && !internalProductLower.includes('prism')) {
+                                                if (wooProductLower.includes('2.5') && internalProductLower.includes('advanced')) {
+                                                    return true;
+                                                } else if (wooProductLower.includes('8mm') && internalProductLower.includes('8mm')) {
+                                                    return true;
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Check for nanoleaf matches
+                                        if (wooProductLower.includes('nanoleaf') && internalProductLower.includes('nanoleaf')) {
+                                            return true;
+                                        }
+                                        
+                                        return false;
+                                    });
+                                    
+                                    if (matchingProduct) {
+                                        matchedProductId = matchingProduct.id;
+                                    }
+                                    
+                                    return {
+                                        id: utils.uid(),
+                                        product: matchedProductId,
+                                        count: item.count,
+                                        quantity: item.quantity
+                                    };
+                                });
                                 
                                 setOrderItems(newOrderItems);
                                 console.log(`Auto-populated ${newOrderItems.length} line items for order ${trimmedOrderNumber}:`, newOrderItems);

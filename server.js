@@ -394,36 +394,9 @@ function processWooCommerceLineItem(item) {
         let count = '';
         
         // Product name mapping (simplified matching)
-        if (productName.toLowerCase().includes('eufy') && productName.toLowerCase().includes('e22')) {
-            if (productName.toLowerCase().includes('2.5') || productName.toLowerCase().includes('advanced')) {
-                simplifiedProduct = 'Eufy E22 — Advanced';
-            } else if (productName.toLowerCase().includes('8mm') || productName.toLowerCase().includes('8 mm')) {
-                simplifiedProduct = 'Eufy E22 — 8MM';
-            } else {
-                simplifiedProduct = 'Eufy E22 — Advanced'; // Default fallback
-            }
-        } else if (productName.toLowerCase().includes('govee') && productName.toLowerCase().includes('prism')) {
-            if (productName.toLowerCase().includes('2.5') || productName.toLowerCase().includes('advanced')) {
-                simplifiedProduct = 'Govee Prism — Advanced';
-            } else if (productName.toLowerCase().includes('8mm') || productName.toLowerCase().includes('8 mm')) {
-                simplifiedProduct = 'Govee Prism — 8MM';
-            } else {
-                simplifiedProduct = 'Govee Prism — Advanced'; // Default fallback
-            }
-        } else if (productName.toLowerCase().includes('govee') && !productName.toLowerCase().includes('prism')) {
-            if (productName.toLowerCase().includes('2.5') || productName.toLowerCase().includes('advanced')) {
-                simplifiedProduct = 'Govee Non-Pro — Advanced';
-            } else if (productName.toLowerCase().includes('8mm') || productName.toLowerCase().includes('8 mm')) {
-                simplifiedProduct = 'Govee Non-Pro — 8MM';
-            } else {
-                simplifiedProduct = 'Govee Non-Pro — Advanced'; // Default fallback
-            }
-        } else if (productName.toLowerCase().includes('nanoleaf')) {
-            simplifiedProduct = 'Nanoleaf Advanced'; // Default for nanoleaf
-        } else {
-            // Fallback - use original name
-            simplifiedProduct = productName;
-        }
+        // Note: We'll return the original product name for now and let the client-side handle matching
+        // This ensures we get the exact product names that exist in the system
+        simplifiedProduct = productName;
         
         // Extract count from variant/attributes
         if (item.variation && item.variation.length > 0) {
