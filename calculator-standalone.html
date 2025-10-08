@@ -1159,16 +1159,31 @@
                                     if (matchingProduct) {
                                         matchedProductId = matchingProduct.id;
                                         
+                                        console.log(`Debug count matching for ${item.productName}:`, {
+                                            extractedCount: item.count,
+                                            productTitle: matchingProduct.title,
+                                            availableCounts: matchingProduct.counts,
+                                            countType: typeof matchingProduct.counts[0]
+                                        });
+                                        
                                         // Try to match the count to available count options for this product
                                         if (item.count && matchingProduct.counts) {
-                                            // First try exact match
-                                            if (matchingProduct.counts.includes(parseInt(item.count))) {
-                                                matchedCount = parseInt(item.count);
+                                            // First try exact match (both as string and number)
+                                            const extractedCountNum = parseInt(item.count);
+                                            const extractedCountStr = item.count.toString();
+                                            
+                                            if (matchingProduct.counts.includes(extractedCountNum)) {
+                                                matchedCount = extractedCountNum;
+                                                console.log(`Exact number match found: ${extractedCountNum}`);
+                                            } else if (matchingProduct.counts.includes(extractedCountStr)) {
+                                                matchedCount = extractedCountStr;
+                                                console.log(`Exact string match found: ${extractedCountStr}`);
                                             } else {
                                                 // Try to find the closest match
                                                 const availableCounts = matchingProduct.counts.map(c => parseInt(c));
-                                                const closestCount = availableCounts.find(c => c >= parseInt(item.count)) || availableCounts[0];
+                                                const closestCount = availableCounts.find(c => c >= extractedCountNum) || availableCounts[0];
                                                 matchedCount = closestCount;
+                                                console.log(`Closest match found: ${closestCount} for ${extractedCountNum}`);
                                             }
                                         }
                                     }
