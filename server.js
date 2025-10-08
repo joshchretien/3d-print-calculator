@@ -398,33 +398,63 @@ function processWooCommerceLineItem(item) {
         // This ensures we get the exact product names that exist in the system
         simplifiedProduct = productName;
         
-        // Extract count from variant/attributes
+        // Extract count from variant/attributes - improved logic
+        console.log(`Processing WooCommerce line item:`, {
+            name: productName,
+            variation: item.variation,
+            sku: item.sku,
+            meta_data: item.meta_data
+        });
+        
+        // Try multiple methods to extract count
         if (item.variation && item.variation.length > 0) {
-            // Try to find count in variation attributes
+            // Method 1: Check variation attributes
             for (const attr of item.variation) {
                 const attrValue = attr.value || '';
+                console.log(`Checking variation attr: ${attr.name} = ${attrValue}`);
+                
                 // Look for patterns like "90 Brackets", "5 Pack", etc.
                 const countMatch = attrValue.match(/(\d+)\s*(?:brackets?|pack|units?|count)/i);
                 if (countMatch) {
                     count = countMatch[1];
+                    console.log(`Found count in variation attr: ${count}`);
                     break;
                 }
                 // Look for patterns like "Just A 5 Pack!"
                 const packMatch = attrValue.match(/just\s*a\s*(\d+)\s*pack/i);
                 if (packMatch) {
                     count = packMatch[1];
+                    console.log(`Found count in pack pattern: ${count}`);
                     break;
                 }
             }
         }
         
-        // If no count found in variations, try to extract from product name
+        // Method 2: Check meta_data for variation info
+        if (!count && item.meta_data) {
+            for (const meta of item.meta_data) {
+                const metaValue = meta.value || '';
+                console.log(`Checking meta: ${meta.key} = ${metaValue}`);
+                
+                const countMatch = metaValue.match(/(\d+)\s*(?:brackets?|pack|units?|count)/i);
+                if (countMatch) {
+                    count = countMatch[1];
+                    console.log(`Found count in meta: ${count}`);
+                    break;
+                }
+            }
+        }
+        
+        // Method 3: Extract from product name as fallback
         if (!count) {
             const countMatch = productName.match(/(\d+)\s*(?:brackets?|pack|units?|count)/i);
             if (countMatch) {
                 count = countMatch[1];
+                console.log(`Found count in product name: ${count}`);
             }
         }
+        
+        console.log(`Final extracted count: "${count}"`);
         
         // If still no count found, default to empty (user can fill manually)
         if (!count) {
