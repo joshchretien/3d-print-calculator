@@ -460,6 +460,7 @@
         });
 
         const ProductsTab = ({ state, dispatch }) => {
+            console.log('ProductsTab rendering with state:', state);
             const [brand, setBrand] = useState("");
             const [model, setModel] = useState("");
             const [style, setStyle] = useState("");
@@ -2088,12 +2089,12 @@
         };
 
         const ManageTab = ({ state, dispatch }) => {
+            console.log('ManageTab rendering with state:', state);
             const [roll, setRoll] = useState("");
             const [brands, setBrands] = useState(state.brands.join("\n"));
             const [styles, setStyles] = useState(state.styles.join("\n"));
             const [packagingOptions, setPackagingOptions] = useState(state.packagingOptions.join("\n"));
             const [multipliers, setMultipliers] = useState(JSON.stringify(state.multipliers, null, 2));
-            
 
             const addRollCost = useCallback(() => {
                 const value = utils.validateNumber(roll);
