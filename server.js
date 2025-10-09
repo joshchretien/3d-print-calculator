@@ -109,9 +109,29 @@ app.use((req, res, next) => {
 // Serve static files after authentication middleware
 app.use(express.static('.'));
 
-// Default data structure
+// Default data structure with your current products embedded
 const DEFAULT_DATA = {
-    products: [],
+    products: [
+        {
+            "id": "z6gm5t98",
+            "brand": "Eufy",
+            "model": "E22",
+            "style": "Advanced",
+            "filamentPerItem": 22.83,
+            "preset": "adv-1|5|30|60|90|120",
+            "counts": [1, 5, 30, 60, 90, 120],
+            "title": "Eufy E22 - Advanced",
+            "packaging": "WT-ENV",
+            "packagingByCount": {
+                "1": "WT-ENV",
+                "5": "WT-ENV",
+                "30": "WT-ENV",
+                "60": "WT-ENV",
+                "90": "WT-ENV",
+                "120": "WT-ENV"
+            }
+        }
+    ],
     orders: [],
     rollCosts: [],
     multipliers: {
@@ -257,10 +277,10 @@ const readData = async () => {
         }
         
         // Use fallback data with your current products if no backup could be restored
-        console.log('No valid data found. Using fallback data with your current products...');
-        await fs.writeFile('data.json', JSON.stringify(FALLBACK_DATA, null, 2));
-        console.log('New data.json created with fallback data (your current products)');
-        return FALLBACK_DATA;
+        console.log('No valid data found. Creating data.json with your embedded Eufy E22 product...');
+        await fs.writeFile('data.json', JSON.stringify(DEFAULT_DATA, null, 2));
+        console.log('New data.json created with embedded Eufy E22 product data');
+        return DEFAULT_DATA;
     }
 };
 
