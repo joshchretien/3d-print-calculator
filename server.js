@@ -35,6 +35,64 @@ const emailTransporter = process.env.SMTP_PASS ? nodemailer.createTransport(EMAI
 // User management functions
 const generateTempPassword = () => crypto.randomBytes(8).toString('hex');
 
+const sendPasswordResetEmail = async (user) => {
+    if (!emailTransporter) {
+        console.log('Email not configured - skipping password reset email for', user.email);
+        return false;
+    }
+    
+    console.log('Attempting to send password reset email to:', user.email);
+    
+    try {
+        const mailOptions = {
+            from: '"Deliciosa Decor" <orders@deliciosadecor.com>',
+            to: user.email,
+            subject: 'Password Reset - Deliciosa Decor Dashboard',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <img src="https://deliciosadecor.com/wp-content/uploads/2025/09/Asset-8@4x-scaled.png" alt="Deliciosa Decor" style="height: 80px;">
+                    </div>
+                    
+                    <h2 style="color: #333;">Password Reset - Deliciosa Decor Dashboard</h2>
+                    
+                    <p>Hello ${user.firstName},</p>
+                    
+                    <p>Your password has been reset for the Deliciosa Decor 3D Print Calculator Dashboard.</p>
+                    
+                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #495057;">Your New Login Credentials:</h3>
+                        <p><strong>Email:</strong> ${user.email}</p>
+                        <p><strong>New Temporary Password:</strong> <code style="background-color: #e9ecef; padding: 4px 8px; border-radius: 4px;">${user.tempPassword}</code></p>
+                    </div>
+                    
+                    <div style="background-color: #d1ecf1; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 0; color: #0c5460;"><strong>Important:</strong> Please change your password after logging in for security.</p>
+                    </div>
+                    
+                    <p><strong>Dashboard URL:</strong> <a href="${process.env.DASHBOARD_URL || 'https://d-print-calculator-hi9gi.kinsta.app'}">${process.env.DASHBOARD_URL || 'https://d-print-calculator-hi9gi.kinsta.app'}</a></p>
+                    
+                    <p>If you have any questions, please contact us at orders@deliciosadecor.com</p>
+                    
+                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #dee2e6;">
+                    
+                    <p style="color: #6c757d; font-size: 14px;">
+                        This is an automated message from Deliciosa Decor. Please do not reply to this email.
+                    </p>
+                </div>
+            `
+        };
+        
+        await emailTransporter.sendMail(mailOptions);
+        console.log(`Password reset email sent successfully to ${user.email}`);
+        return true;
+    } catch (error) {
+        console.error('Error sending password reset email:', error.message);
+        console.error('Full error:', error);
+        return false;
+    }
+};
+
 const sendWelcomeEmail = async (user) => {
     if (!emailTransporter) {
         console.log('Email not configured - skipping welcome email for', user.email);
@@ -378,7 +436,7 @@ app.post('/api/users/:id/reset-password', requireAuth, async (req, res) => {
         
         // Send password reset email
         const user = data.users[userIndex];
-        const emailSent = await sendWelcomeEmail(user);
+        const emailSent = await sendPasswordResetEmail(user);
         
         res.json({ success: true, emailSent });
     } catch (error) {

@@ -2212,7 +2212,7 @@
             }, [loadUsers]);
 
             const resetPassword = useCallback(async (userId) => {
-                if (!confirm('Reset this user\'s password? A new temporary password will be emailed to them.')) return;
+                if (!confirm('Reset this user\'s password? A new temporary password will be generated and emailed to them.')) return;
                 
                 try {
                     const response = await fetch(`/api/users/${userId}/reset-password`, {
@@ -2221,7 +2221,11 @@
                     
                     const result = await response.json();
                     if (response.ok) {
-                        alert(`Password reset! ${result.emailSent ? 'New password emailed to user.' : 'Email failed to send.'}`);
+                        if (result.emailSent) {
+                            alert('Password reset successfully! A new temporary password has been emailed to the user.');
+                        } else {
+                            alert('Password reset successfully, but email failed to send. You can manually provide the user with their new password.');
+                        }
                     } else {
                         alert(`Error: ${result.error}`);
                     }
@@ -2461,6 +2465,7 @@
                                                         <button
                                                             onClick={() => resetPassword(user.id)}
                                                             className="px-2 py-1 rounded text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-700 transition-colors duration-200"
+                                                            title="Generate new temporary password and email it"
                                                         >
                                                             Reset Password
                                                         </button>
