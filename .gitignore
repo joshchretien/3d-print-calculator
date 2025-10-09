@@ -55,6 +55,9 @@ data-*.json
 calculator.db
 calculator.db-*
 
+# Persistent data file (this SHOULD be committed for persistence)
+!persistent-data.json
+
 # Development files we don't need
 test-power-supply.html
 updated-calculator.html

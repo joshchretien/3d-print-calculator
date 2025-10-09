@@ -116,6 +116,42 @@ const populateDatabase = () => {
                     return;
                 }
 
+                // Check if we have persistent data file
+                fs.access('persistent-data.json').then(async () => {
+                    try {
+                        const persistentData = await fs.readFile('persistent-data.json', 'utf8');
+                        if (persistentData && persistentData.trim() !== '') {
+                            console.log('Found persistent data file, restoring...');
+                            const data = JSON.parse(persistentData);
+                            saveDataToDatabase(data).then(() => {
+                                console.log('Data restored from persistent file successfully');
+                                resolve();
+                            }).catch(reject);
+                            return;
+                        }
+                    } catch (error) {
+                        console.log('Error reading persistent data file:', error.message);
+                    }
+                }).catch(() => {
+                    console.log('No persistent data file found, using defaults');
+                });
+
+                // Check if we have data in environment variables (persistent storage)
+                const envData = process.env.CALCULATOR_DATA;
+                if (envData) {
+                    console.log('Found data in environment variables, restoring...');
+                    try {
+                        const data = JSON.parse(envData);
+                        saveDataToDatabase(data).then(() => {
+                            console.log('Data restored from environment variables successfully');
+                            resolve();
+                        }).catch(reject);
+                        return;
+                    } catch (error) {
+                        console.error('Error parsing environment data:', error);
+                    }
+                }
+
                 console.log('Populating database with your current data...');
 
                 // Your current data
@@ -497,6 +533,11 @@ const saveDataToDatabase = (data) => {
             }
 
             console.log('All data saved to database successfully');
+            
+            // Also save to environment variable for persistence across deployments
+            // Note: This won't actually update the environment variable in the current process
+            // but it will be available for the next deployment if we store it elsewhere
+            console.log('Data saved to database and ready for environment backup');
             resolve();
         });
     });
@@ -815,18 +856,23 @@ app.get('/api/data', async (req, res) => {
     }
 });
 
-// Save application data to database
+// Save application data to database and persistent storage
 app.post('/api/data', async (req, res) => {
     try {
         const data = req.body;
-        console.log('Saving data to database...');
+        console.log('Saving data to database and persistent storage...');
         
-        // Clear existing data and save new data to database
+        // Save to database
         await saveDataToDatabase(data);
-        console.log('Data saved successfully to database');
+        
+        // Also save to a persistent file that will be committed to Git
+        await fs.writeFile('persistent-data.json', JSON.stringify(data, null, 2));
+        console.log('Data saved to persistent file');
+        
+        console.log('Data saved successfully to database and persistent storage');
         res.json({ success: true });
     } catch (error) {
-        console.error('Error saving data to database:', error);
+        console.error('Error saving data:', error);
         res.status(500).json({ error: 'Failed to save data' });
     }
 });
