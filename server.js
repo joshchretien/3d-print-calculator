@@ -176,33 +176,55 @@ const migrateData = async (data) => {
 // Read data from file
 const readData = async () => {
     try {
+        // Check if data.json exists first
+        await fs.access('data.json');
+        
         const data = await fs.readFile('data.json', 'utf8');
+        if (!data || data.trim() === '') {
+            throw new Error('data.json is empty');
+        }
+        
         const parsedData = JSON.parse(data);
         
         // Always migrate and save data to ensure it's up to date
         const migratedData = await migrateData(parsedData);
+        console.log('Data loaded successfully from existing data.json');
         return migratedData;
     } catch (error) {
         console.log('Error reading data.json:', error.message);
-        console.log('Attempting to create new data file with defaults...');
         
-        // Only create new file if it truly doesn't exist
+        // Check if there are any backup files we can restore from
         try {
-            await fs.access('data.json');
-            console.log('data.json exists but is corrupted. Creating backup...');
-            // If file exists but is corrupted, create backup
-            const backupName = `data-backup-${Date.now()}.json`;
-            try {
-                await fs.copyFile('data.json', backupName);
-                console.log(`Backup created: ${backupName}`);
-            } catch (backupError) {
-                console.log('Could not create backup:', backupError.message);
+            const files = await fs.readdir('.');
+            const backupFiles = files.filter(file => file.startsWith('data-backup-') && file.endsWith('.json'));
+            
+            if (backupFiles.length > 0) {
+                // Sort by timestamp (newest first)
+                backupFiles.sort().reverse();
+                const latestBackup = backupFiles[0];
+                console.log(`Found backup file: ${latestBackup}. Attempting to restore...`);
+                
+                try {
+                    const backupData = await fs.readFile(latestBackup, 'utf8');
+                    const parsedBackup = JSON.parse(backupData);
+                    
+                    // Restore from backup
+                    await fs.writeFile('data.json', JSON.stringify(parsedBackup, null, 2));
+                    console.log(`Successfully restored data from backup: ${latestBackup}`);
+                    
+                    // Migrate the restored data
+                    const migratedData = await migrateData(parsedBackup);
+                    return migratedData;
+                } catch (backupError) {
+                    console.log('Failed to restore from backup:', backupError.message);
+                }
             }
-        } catch (accessError) {
-            console.log('data.json does not exist, creating new file...');
+        } catch (dirError) {
+            console.log('Could not check for backup files:', dirError.message);
         }
         
-        // Create new file with defaults
+        // Only create new file with defaults if no backup could be restored
+        console.log('No valid data found. Creating new data.json with defaults...');
         await fs.writeFile('data.json', JSON.stringify(DEFAULT_DATA, null, 2));
         console.log('New data.json created with default data');
         return DEFAULT_DATA;
@@ -246,11 +268,36 @@ app.get('/api/data', async (req, res) => {
 // Save application data
 app.post('/api/data', async (req, res) => {
     try {
+        // Create backup before saving new data
+        try {
+            const timestamp = Date.now();
+            const backupName = `data-backup-${timestamp}.json`;
+            await fs.copyFile('data.json', backupName);
+            console.log(`Backup created: ${backupName}`);
+        } catch (backupError) {
+            console.log('Could not create backup (file might not exist):', backupError.message);
+        }
+        
         await fs.writeFile('data.json', JSON.stringify(req.body, null, 2));
+        console.log('Data saved successfully');
         res.json({ success: true });
     } catch (error) {
         console.error('Error saving data:', error);
         res.status(500).json({ error: 'Failed to save data' });
+    }
+});
+
+// Create manual backup endpoint
+app.post('/api/backup', async (req, res) => {
+    try {
+        const timestamp = Date.now();
+        const backupName = `data-backup-${timestamp}.json`;
+        await fs.copyFile('data.json', backupName);
+        console.log(`Manual backup created: ${backupName}`);
+        res.json({ success: true, backupFile: backupName });
+    } catch (error) {
+        console.error('Error creating backup:', error);
+        res.status(500).json({ error: 'Failed to create backup' });
     }
 });
 
