@@ -2,6 +2,9 @@ const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
 const session = require('express-session');
+const bcrypt = require('bcryptjs');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -14,6 +17,74 @@ const SHIPSTATION_BASE_URL = 'https://ssapi.shipstation.com';
 const WOOCOMMERCE_URL = 'https://deliciosadecor.com';
 const WOOCOMMERCE_CONSUMER_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY || 'ck_f803a6e8b509e5cc726bbc2fc2a1116d9879f372';
 const WOOCOMMERCE_CONSUMER_SECRET = process.env.WOOCOMMERCE_CONSUMER_SECRET || 'cs_b888ae2b936a35ff6f9a42542defd0d3ce3e6686';
+
+// Email Configuration
+const EMAIL_CONFIG = {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: process.env.SMTP_PORT || 587,
+    secure: false,
+    auth: {
+        user: process.env.SMTP_USER || 'orders@deliciosadecor.com',
+        pass: process.env.SMTP_PASS || process.env.EMAIL_PASSWORD
+    }
+};
+
+// Create email transporter
+const emailTransporter = nodemailer.createTransporter(EMAIL_CONFIG);
+
+// User management functions
+const generateTempPassword = () => crypto.randomBytes(8).toString('hex');
+
+const sendWelcomeEmail = async (user) => {
+    try {
+        const mailOptions = {
+            from: '"Deliciosa Decor" <orders@deliciosadecor.com>',
+            to: user.email,
+            subject: 'Welcome to Deliciosa Decor Dashboard',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <img src="https://deliciosadecor.com/wp-content/uploads/2025/09/Asset-8@4x-scaled.png" alt="Deliciosa Decor" style="height: 80px;">
+                    </div>
+                    
+                    <h2 style="color: #333;">Welcome to Deliciosa Decor Dashboard!</h2>
+                    
+                    <p>Hello ${user.firstName},</p>
+                    
+                    <p>Your account has been created for the Deliciosa Decor 3D Print Calculator Dashboard.</p>
+                    
+                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #495057;">Your Login Credentials:</h3>
+                        <p><strong>Email:</strong> ${user.email}</p>
+                        <p><strong>Temporary Password:</strong> <code style="background-color: #e9ecef; padding: 4px 8px; border-radius: 4px;">${user.tempPassword}</code></p>
+                        <p><strong>Access Level:</strong> ${user.accessLevel}</p>
+                    </div>
+                    
+                    <div style="background-color: #d1ecf1; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 0; color: #0c5460;"><strong>Important:</strong> Please change your password after your first login for security.</p>
+                    </div>
+                    
+                    <p><strong>Dashboard URL:</strong> <a href="${process.env.DASHBOARD_URL || 'https://d-print-calculator-hi9gi.kinsta.app'}">${process.env.DASHBOARD_URL || 'https://d-print-calculator-hi9gi.kinsta.app'}</a></p>
+                    
+                    <p>If you have any questions, please contact us at orders@deliciosadecor.com</p>
+                    
+                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #dee2e6;">
+                    
+                    <p style="color: #6c757d; font-size: 14px;">
+                        This is an automated message from Deliciosa Decor. Please do not reply to this email.
+                    </p>
+                </div>
+            `
+        };
+        
+        await emailTransporter.sendMail(mailOptions);
+        console.log(`Welcome email sent to ${user.email}`);
+        return true;
+    } catch (error) {
+        console.error('Error sending welcome email:', error);
+        return false;
+    }
+};
 
 // Middleware
 app.use(express.json());
@@ -53,18 +124,38 @@ app.get('/login', (req, res) => {
 });
 
 // Login POST route
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     
-    // Use environment variables for authentication
-    const expectedUsername = process.env.AUTH_USERNAME || 'admin';
-    const expectedPassword = process.env.AUTH_PASSWORD || 'deliciosa2024';
-    
-    if (username === expectedUsername && password === expectedPassword) {
-        req.session.authenticated = true;
-        res.json({ success: true, redirect: '/calculator-standalone.html' });
-    } else {
-        res.status(401).json({ success: false, message: 'Invalid credentials' });
+    try {
+        const data = await loadData();
+        const user = data.users.find(u => u.email === username && u.isActive);
+        
+        if (user && bcrypt.compareSync(password, user.passwordHash)) {
+            req.session.authenticated = true;
+            req.session.userId = user.id;
+            req.session.accessLevel = user.accessLevel;
+            
+            // Update last login
+            user.lastLogin = new Date().toISOString();
+            await saveData(data);
+            
+            res.json({ 
+                success: true, 
+                redirect: '/calculator-standalone.html',
+                user: {
+                    email: user.email,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    accessLevel: user.accessLevel
+                }
+            });
+        } else {
+            res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
@@ -76,6 +167,187 @@ app.post('/logout', (req, res) => {
         }
         res.json({ success: true, redirect: '/login' });
     });
+});
+
+// User management API routes (admin only)
+app.get('/api/users', requireAuth, async (req, res) => {
+    try {
+        if (req.session.accessLevel !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+        
+        const data = await loadData();
+        const users = data.users.map(user => ({
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            accessLevel: user.accessLevel,
+            createdAt: user.createdAt,
+            isActive: user.isActive,
+            lastLogin: user.lastLogin
+        }));
+        
+        res.json(users);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+app.post('/api/users', requireAuth, async (req, res) => {
+    try {
+        if (req.session.accessLevel !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+        
+        const { email, firstName, lastName, accessLevel } = req.body;
+        
+        if (!email || !firstName || !lastName || !accessLevel) {
+            return res.status(400).json({ error: 'All fields are required' });
+        }
+        
+        if (!['admin', 'manager'].includes(accessLevel)) {
+            return res.status(400).json({ error: 'Invalid access level' });
+        }
+        
+        const data = await loadData();
+        
+        // Check if user already exists
+        if (data.users.find(u => u.email === email)) {
+            return res.status(400).json({ error: 'User already exists' });
+        }
+        
+        // Generate temporary password
+        const tempPassword = generateTempPassword();
+        const passwordHash = bcrypt.hashSync(tempPassword, 10);
+        
+        const newUser = {
+            id: crypto.randomUUID(),
+            email,
+            firstName,
+            lastName,
+            accessLevel,
+            passwordHash,
+            tempPassword, // Store temporarily for email
+            createdAt: new Date().toISOString(),
+            isActive: true,
+            lastLogin: null
+        };
+        
+        data.users.push(newUser);
+        await saveData(data);
+        
+        // Send welcome email
+        const emailSent = await sendWelcomeEmail(newUser);
+        
+        res.json({ 
+            success: true, 
+            user: {
+                id: newUser.id,
+                email: newUser.email,
+                firstName: newUser.firstName,
+                lastName: newUser.lastName,
+                accessLevel: newUser.accessLevel,
+                createdAt: newUser.createdAt,
+                isActive: newUser.isActive
+            },
+            emailSent
+        });
+    } catch (error) {
+        console.error('Error creating user:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+app.put('/api/users/:id', requireAuth, async (req, res) => {
+    try {
+        if (req.session.accessLevel !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+        
+        const { id } = req.params;
+        const { firstName, lastName, accessLevel, isActive } = req.body;
+        
+        const data = await loadData();
+        const userIndex = data.users.findIndex(u => u.id === id);
+        
+        if (userIndex === -1) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Update user
+        if (firstName) data.users[userIndex].firstName = firstName;
+        if (lastName) data.users[userIndex].lastName = lastName;
+        if (accessLevel) data.users[userIndex].accessLevel = accessLevel;
+        if (typeof isActive === 'boolean') data.users[userIndex].isActive = isActive;
+        
+        await saveData(data);
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error updating user:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+app.delete('/api/users/:id', requireAuth, async (req, res) => {
+    try {
+        if (req.session.accessLevel !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+        
+        const { id } = req.params;
+        
+        // Prevent deleting the last admin
+        const data = await loadData();
+        const adminCount = data.users.filter(u => u.accessLevel === 'admin' && u.isActive).length;
+        const userToDelete = data.users.find(u => u.id === id);
+        
+        if (userToDelete && userToDelete.accessLevel === 'admin' && adminCount <= 1) {
+            return res.status(400).json({ error: 'Cannot delete the last admin user' });
+        }
+        
+        data.users = data.users.filter(u => u.id !== id);
+        await saveData(data);
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+app.post('/api/users/:id/reset-password', requireAuth, async (req, res) => {
+    try {
+        if (req.session.accessLevel !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+        
+        const { id } = req.params;
+        const tempPassword = generateTempPassword();
+        const passwordHash = bcrypt.hashSync(tempPassword, 10);
+        
+        const data = await loadData();
+        const userIndex = data.users.findIndex(u => u.id === id);
+        
+        if (userIndex === -1) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        data.users[userIndex].passwordHash = passwordHash;
+        data.users[userIndex].tempPassword = tempPassword;
+        await saveData(data);
+        
+        // Send password reset email
+        const user = data.users[userIndex];
+        const emailSent = await sendWelcomeEmail(user);
+        
+        res.json({ success: true, emailSent });
+    } catch (error) {
+        console.error('Error resetting password:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
 });
 
 // Apply authentication to all routes except login and static assets
@@ -98,7 +370,20 @@ const DEFAULT_DATA = {
         "Prism": { 12: 15, 36: 19.5, 54: 11.5, 72: 10.75 },
         "Nanoleaf Advanced": { 1: 19.5, 30: 8 },
         "Nanoleaf 8MM": { 1: 49.5, 30: 22 }
-    }
+    },
+    users: [
+        {
+            id: "default-admin",
+            email: "orders@deliciosadecor.com",
+            firstName: "Admin",
+            lastName: "User",
+            accessLevel: "admin",
+            passwordHash: bcrypt.hashSync("deliciosa2024", 10),
+            createdAt: new Date().toISOString(),
+            isActive: true,
+            lastLogin: null
+        }
+    ]
 };
 
 // Data migration function
