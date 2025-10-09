@@ -20,22 +20,27 @@ const WOOCOMMERCE_CONSUMER_SECRET = process.env.WOOCOMMERCE_CONSUMER_SECRET || '
 
 // Email Configuration
 const EMAIL_CONFIG = {
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: process.env.SMTP_PORT || 587,
-    secure: false,
+    host: process.env.SMTP_HOST || 'smtp.ionos.com',
+    port: parseInt(process.env.SMTP_PORT) || 465,
+    secure: process.env.SMTP_SECURE === 'true' || true,
     auth: {
         user: process.env.SMTP_USER || 'orders@deliciosadecor.com',
-        pass: process.env.SMTP_PASS || process.env.EMAIL_PASSWORD
+        pass: process.env.SMTP_PASS || process.env.EMAIL_PASSWORD || ''
     }
 };
 
-// Create email transporter
-const emailTransporter = nodemailer.createTransporter(EMAIL_CONFIG);
+// Create email transporter (only if email is configured)
+const emailTransporter = process.env.SMTP_PASS ? nodemailer.createTransport(EMAIL_CONFIG) : null;
 
 // User management functions
 const generateTempPassword = () => crypto.randomBytes(8).toString('hex');
 
 const sendWelcomeEmail = async (user) => {
+    if (!emailTransporter) {
+        console.log('Email not configured - skipping welcome email for', user.email);
+        return false;
+    }
+    
     try {
         const mailOptions = {
             from: '"Deliciosa Decor" <orders@deliciosadecor.com>',
