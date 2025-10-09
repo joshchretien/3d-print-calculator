@@ -16,7 +16,7 @@
 
         // Version checking and auto-refresh functionality
         const VersionChecker = {
-            currentVersion: '1.3.2',
+            currentVersion: '1.3.3',
             checkInterval: 30000, // Check every 30 seconds
             intervalId: null,
 
@@ -266,7 +266,7 @@
             }
             if (!state.multipliers) {
                 state.multipliers = { ...DEFAULT_MULTIPLIERS };
-            } else {
+    } else {
                 state.multipliers = { ...DEFAULT_MULTIPLIERS, ...state.multipliers };
             }
 
@@ -2421,6 +2421,7 @@
                                         )}
                                         <div className="flex items-center text-xs text-gray-400 mr-4">
                                             <span>v{VersionChecker.currentVersion}</span>
+                                            <span className="ml-1 text-green-500">🟢</span>
                                         </div>
                                         <button
                                             onClick={() => window.location.reload()}

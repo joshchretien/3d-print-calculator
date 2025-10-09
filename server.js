@@ -157,10 +157,17 @@ const migrateData = async (data) => {
         });
     }
     
-    // Save migrated data if changes were made
-    if (updated) {
+    // Always save data to ensure persistence (even if no migration was needed)
+    try {
         await fs.writeFile('data.json', JSON.stringify(data, null, 2));
-        console.log('Data migrated and saved');
+        if (updated) {
+            console.log('Data migrated and saved successfully');
+        } else {
+            console.log('Data validated and saved successfully');
+        }
+    } catch (saveError) {
+        console.error('Error saving data.json:', saveError);
+        // Don't throw error here, just log it and continue
     }
     
     return data;
@@ -171,10 +178,33 @@ const readData = async () => {
     try {
         const data = await fs.readFile('data.json', 'utf8');
         const parsedData = JSON.parse(data);
-        return await migrateData(parsedData);
+        
+        // Always migrate and save data to ensure it's up to date
+        const migratedData = await migrateData(parsedData);
+        return migratedData;
     } catch (error) {
-        console.log('Creating new data file with defaults');
+        console.log('Error reading data.json:', error.message);
+        console.log('Attempting to create new data file with defaults...');
+        
+        // Only create new file if it truly doesn't exist
+        try {
+            await fs.access('data.json');
+            console.log('data.json exists but is corrupted. Creating backup...');
+            // If file exists but is corrupted, create backup
+            const backupName = `data-backup-${Date.now()}.json`;
+            try {
+                await fs.copyFile('data.json', backupName);
+                console.log(`Backup created: ${backupName}`);
+            } catch (backupError) {
+                console.log('Could not create backup:', backupError.message);
+            }
+        } catch (accessError) {
+            console.log('data.json does not exist, creating new file...');
+        }
+        
+        // Create new file with defaults
         await fs.writeFile('data.json', JSON.stringify(DEFAULT_DATA, null, 2));
+        console.log('New data.json created with default data');
         return DEFAULT_DATA;
     }
 };

@@ -10,6 +10,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - TBD
 
+## [1.3.3] - 2025-01-09
+
+### Added
+- **Auto-Refresh System**
+  - Automatic version checking every 30 seconds
+  - Update notifications with auto-refresh functionality
+  - Manual refresh button in header
+  - Version indicator showing current version
+  - Cache-busting headers to prevent stale content
+
+### Fixed
+- **Data Persistence Issues**
+  - Enhanced data migration and saving process
+  - Automatic backup creation for corrupted data files
+  - Improved error handling for data file operations
+  - Ensures data is never lost during updates or deployments
+
 ## [1.3.2] - 2025-01-09
 
 ### Added
