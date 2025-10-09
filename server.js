@@ -839,7 +839,7 @@ const getShipStationAuth = () => {
 
 // API Routes
 app.get('/', (req, res) => {
-    res.redirect('/calculator-standalone.html');
+    res.sendFile(path.join(__dirname, 'calculator-standalone.html'));
 });
 
 // Get application version
