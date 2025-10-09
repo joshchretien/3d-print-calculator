@@ -2290,7 +2290,7 @@
                                             </button>
                                         ))}
                                     </nav>
-                                    <div className="flex items-center">
+                                    <div className="flex items-center space-x-4">
                                         {saveStatus === "saving" && (
                                             <div className="flex items-center text-sm text-blue-600">
                                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
@@ -2313,6 +2313,33 @@
                                                 Save Error
                                             </div>
                                         )}
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    const response = await fetch('/logout', {
+                                                        method: 'POST',
+                                                        headers: {
+                                                            'Content-Type': 'application/json',
+                                                        }
+                                                    });
+                                                    const data = await response.json();
+                                                    if (data.success) {
+                                                        window.location.href = data.redirect;
+                                                    }
+                                                } catch (error) {
+                                                    console.error('Logout error:', error);
+                                                    // Fallback - redirect to login anyway
+                                                    window.location.href = '/login';
+                                                }
+                                            }}
+                                            className="flex items-center text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md hover:bg-gray-100 transition-colors duration-200"
+                                            title="Logout"
+                                        >
+                                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                            </svg>
+                                            Logout
+                                        </button>
                                     </div>
                                 </div>
                             </div>

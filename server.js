@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
+const session = require('express-session');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -14,35 +15,72 @@ const WOOCOMMERCE_URL = 'https://deliciosadecor.com';
 const WOOCOMMERCE_CONSUMER_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY || 'ck_f803a6e8b509e5cc726bbc2fc2a1116d9879f372';
 const WOOCOMMERCE_CONSUMER_SECRET = process.env.WOOCOMMERCE_CONSUMER_SECRET || 'cs_b888ae2b936a35ff6f9a42542defd0d3ce3e6686';
 
+// Session configuration
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'deliciosa-secret-key-2024',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false, // Set to true in production with HTTPS
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
+
 // Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static('.'));
 
-// Basic authentication middleware
-const authenticate = (req, res, next) => {
-    const auth = req.headers.authorization;
-    if (!auth || !auth.startsWith('Basic ')) {
-        res.setHeader('WWW-Authenticate', 'Basic realm="3D Print Calculator"');
-        return res.status(401).send('Authentication required');
+// Session-based authentication middleware
+const requireAuth = (req, res, next) => {
+    if (req.session.authenticated) {
+        next();
+    } else {
+        res.redirect('/login');
     }
-    
-    const credentials = Buffer.from(auth.slice(6), 'base64').toString();
-    const [username, password] = credentials.split(':');
+};
+
+// Login route
+app.get('/login', (req, res) => {
+    if (req.session.authenticated) {
+        return res.redirect('/calculator-standalone.html');
+    }
+    res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+// Login POST route
+app.post('/login', (req, res) => {
+    const { username, password } = req.body;
     
     // Use environment variables for authentication
     const expectedUsername = process.env.AUTH_USERNAME || 'admin';
     const expectedPassword = process.env.AUTH_PASSWORD || 'deliciosa2024';
     
     if (username === expectedUsername && password === expectedPassword) {
-        next();
+        req.session.authenticated = true;
+        res.json({ success: true, redirect: '/calculator-standalone.html' });
     } else {
-        res.setHeader('WWW-Authenticate', 'Basic realm="3D Print Calculator"');
-        return res.status(401).send('Invalid credentials');
+        res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
-};
+});
 
-// Apply authentication to all routes
-app.use(authenticate);
+// Logout route
+app.post('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).json({ success: false, message: 'Could not log out' });
+        }
+        res.json({ success: true, redirect: '/login' });
+    });
+});
+
+// Apply authentication to all routes except login
+app.use((req, res, next) => {
+    if (req.path === '/login' || req.path === '/api/login') {
+        return next();
+    }
+    requireAuth(req, res, next);
+});
 
 // Default data structure
 const DEFAULT_DATA = {
