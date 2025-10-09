@@ -607,7 +607,7 @@ const requireAuth = (req, res, next) => {
 // Login route
 app.get('/login', (req, res) => {
     if (req.session.authenticated) {
-        return res.redirect('/calculator-standalone.html');
+        return res.redirect('/');
     }
     res.sendFile(path.join(__dirname, 'login.html'));
 });
@@ -622,7 +622,7 @@ app.post('/login', (req, res) => {
     
     if (username === expectedUsername && password === expectedPassword) {
         req.session.authenticated = true;
-        res.json({ success: true, redirect: '/calculator-standalone.html' });
+        res.json({ success: true, redirect: '/' });
     } else {
         res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
@@ -839,6 +839,7 @@ const getShipStationAuth = () => {
 
 // API Routes
 app.get('/', (req, res) => {
+    console.log('Serving calculator at root domain');
     res.sendFile(path.join(__dirname, 'calculator-standalone.html'));
 });
 
