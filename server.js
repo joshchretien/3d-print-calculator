@@ -30,6 +30,26 @@ app.use(session({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Cache-busting middleware to prevent browser caching
+app.use((req, res, next) => {
+    // For HTML files, prevent caching
+    if (req.path.endsWith('.html')) {
+        res.set({
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
+    }
+    // For JS and CSS files, add version-based cache busting
+    else if (req.path.endsWith('.js') || req.path.endsWith('.css')) {
+        res.set({
+            'Cache-Control': 'public, max-age=0',
+            'ETag': `"${Date.now()}"`
+        });
+    }
+    next();
+});
+
 // Session-based authentication middleware
 const requireAuth = (req, res, next) => {
     if (req.session.authenticated) {
@@ -170,6 +190,16 @@ const getShipStationAuth = () => {
 // API Routes
 app.get('/', (req, res) => {
     res.redirect('/calculator-standalone.html');
+});
+
+// Get application version
+app.get('/api/version', (req, res) => {
+    const packageJson = require('./package.json');
+    res.json({
+        version: packageJson.version,
+        timestamp: Date.now(),
+        buildDate: new Date().toISOString()
+    });
 });
 
 // Get application data

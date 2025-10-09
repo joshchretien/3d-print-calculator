@@ -14,6 +14,112 @@
     <script type="text/babel">
         const { useState, useReducer, useEffect, useMemo, useCallback, memo } = React;
 
+        // Version checking and auto-refresh functionality
+        const VersionChecker = {
+            currentVersion: '1.3.2',
+            checkInterval: 30000, // Check every 30 seconds
+            intervalId: null,
+
+            async checkVersion() {
+                try {
+                    const response = await fetch('/api/version');
+                    const serverVersion = await response.json();
+                    
+                    if (serverVersion.version !== this.currentVersion) {
+                        console.log(`New version available: ${serverVersion.version} (current: ${this.currentVersion})`);
+                        this.showUpdateNotification(serverVersion.version);
+                    }
+                } catch (error) {
+                    console.log('Version check failed:', error);
+                }
+            },
+
+            showUpdateNotification(newVersion) {
+                // Create notification element
+                const notification = document.createElement('div');
+                notification.innerHTML = `
+                    <div style="
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        background: #10B981;
+                        color: white;
+                        padding: 16px 20px;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                        z-index: 10000;
+                        font-family: system-ui, -apple-system, sans-serif;
+                        max-width: 400px;
+                    ">
+                        <div style="font-weight: 600; margin-bottom: 8px;">
+                            🚀 Update Available!
+                        </div>
+                        <div style="font-size: 14px; margin-bottom: 12px;">
+                            Version ${newVersion} is now available. Refresh to get the latest features.
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="this.parentElement.parentElement.remove(); window.location.reload();" 
+                                    style="
+                                        background: white;
+                                        color: #10B981;
+                                        border: none;
+                                        padding: 6px 12px;
+                                        border-radius: 4px;
+                                        font-weight: 600;
+                                        cursor: pointer;
+                                        font-size: 14px;
+                                    ">
+                                Refresh Now
+                            </button>
+                            <button onclick="this.parentElement.parentElement.remove();" 
+                                    style="
+                                        background: transparent;
+                                        color: white;
+                                        border: 1px solid white;
+                                        padding: 6px 12px;
+                                        border-radius: 4px;
+                                        cursor: pointer;
+                                        font-size: 14px;
+                                    ">
+                                Later
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(notification);
+
+                // Auto-refresh after 10 seconds if user doesn't interact
+                setTimeout(() => {
+                    if (notification.parentElement) {
+                        notification.remove();
+                        window.location.reload();
+                    }
+                }, 10000);
+            },
+
+            startChecking() {
+                // Initial check
+                this.checkVersion();
+                
+                // Set up interval
+                this.intervalId = setInterval(() => {
+                    this.checkVersion();
+                }, this.checkInterval);
+            },
+
+            stopChecking() {
+                if (this.intervalId) {
+                    clearInterval(this.intervalId);
+                    this.intervalId = null;
+                }
+            }
+        };
+
+        // Start version checking when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            VersionChecker.startChecking();
+        });
+
         const CONSTANTS = {
             LS_KEY: "print-calculator-v3.3", // Data preservation test - v2
             DEFAULT_ROLL_COST: 25,
@@ -2313,6 +2419,18 @@
                                                 Save Error
                                             </div>
                                         )}
+                                        <div className="flex items-center text-xs text-gray-400 mr-4">
+                                            <span>v{VersionChecker.currentVersion}</span>
+                                        </div>
+                                        <button
+                                            onClick={() => window.location.reload()}
+                                            className="flex items-center text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md hover:bg-gray-100 transition-colors duration-200 mr-2"
+                                            title="Refresh Page"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                            </svg>
+                                        </button>
                                         <button
                                             onClick={async () => {
                                                 try {
