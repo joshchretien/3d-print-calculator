@@ -134,28 +134,43 @@ app.post('/login', async (req, res) => {
     
     try {
         const data = await readData();
-        const user = data.users.find(u => u.email === username && u.isActive);
+        console.log(`Login attempt for: ${username}`);
+        console.log(`Total users: ${data.users ? data.users.length : 0}`);
         
-        if (user && bcrypt.compareSync(password, user.passwordHash)) {
-            req.session.authenticated = true;
-            req.session.userId = user.id;
-            req.session.accessLevel = user.accessLevel;
+        const user = data.users.find(u => u.email === username && u.isActive);
+        console.log(`User found: ${user ? 'Yes' : 'No'}`);
+        
+        if (user) {
+            console.log(`User email: ${user.email}, Active: ${user.isActive}`);
+            const passwordMatch = bcrypt.compareSync(password, user.passwordHash);
+            console.log(`Password match: ${passwordMatch}`);
             
-            // Update last login
-            user.lastLogin = new Date().toISOString();
-            await fs.writeFile('data.json', JSON.stringify(data, null, 2));
-            
-            res.json({ 
-                success: true, 
-                redirect: '/calculator-standalone.html',
-                user: {
-                    email: user.email,
-                    firstName: user.firstName,
-                    lastName: user.lastName,
-                    accessLevel: user.accessLevel
-                }
-            });
+            if (passwordMatch) {
+                req.session.authenticated = true;
+                req.session.userId = user.id;
+                req.session.accessLevel = user.accessLevel;
+                
+                // Update last login
+                user.lastLogin = new Date().toISOString();
+                await fs.writeFile('data.json', JSON.stringify(data, null, 2));
+                
+                console.log(`Login successful for: ${username}`);
+                res.json({ 
+                    success: true, 
+                    redirect: '/calculator-standalone.html',
+                    user: {
+                        email: user.email,
+                        firstName: user.firstName,
+                        lastName: user.lastName,
+                        accessLevel: user.accessLevel
+                    }
+                });
+            } else {
+                console.log(`Password mismatch for: ${username}`);
+                res.status(401).json({ success: false, message: 'Invalid credentials' });
+            }
         } else {
+            console.log(`No active user found for: ${username}`);
             res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
     } catch (error) {
@@ -376,19 +391,7 @@ const DEFAULT_DATA = {
         "Nanoleaf Advanced": { 1: 19.5, 30: 8 },
         "Nanoleaf 8MM": { 1: 49.5, 30: 22 }
     },
-    users: [
-        {
-            id: "default-admin",
-            email: "orders@deliciosadecor.com",
-            firstName: "Admin",
-            lastName: "User",
-            accessLevel: "admin",
-            passwordHash: bcrypt.hashSync("deliciosa2024", 10),
-            createdAt: new Date().toISOString(),
-            isActive: true,
-            lastLogin: null
-        }
-    ]
+    users: []
 };
 
 // Data migration function
@@ -424,6 +427,25 @@ const migrateData = async (data) => {
                 updated = true;
             }
         });
+    }
+    
+    // Ensure default admin user exists
+    if (!data.users || data.users.length === 0) {
+        data.users = [
+            {
+                id: "default-admin",
+                email: "orders@deliciosadecor.com",
+                firstName: "Admin",
+                lastName: "User",
+                accessLevel: "admin",
+                passwordHash: bcrypt.hashSync("deliciosa2024", 10),
+                createdAt: new Date().toISOString(),
+                isActive: true,
+                lastLogin: null
+            }
+        ];
+        updated = true;
+        console.log('Created default admin user');
     }
     
     // Save migrated data if changes were made
