@@ -458,6 +458,31 @@ const migrateData = async (data) => {
         data.users.forEach((u, index) => {
             console.log(`  Existing user ${index}: ${u.email} (active: ${u.isActive})`);
         });
+        
+        // Check if we have a valid admin user, if not, create one
+        const hasValidAdmin = data.users.find(u => 
+            u.email === "orders@deliciosadecor.com" && 
+            u.isActive === true && 
+            u.accessLevel === "admin"
+        );
+        
+        if (!hasValidAdmin) {
+            console.log('No valid admin user found, creating default admin');
+            const defaultUser = {
+                id: "default-admin",
+                email: "orders@deliciosadecor.com",
+                firstName: "Admin",
+                lastName: "User",
+                accessLevel: "admin",
+                passwordHash: bcrypt.hashSync("deliciosa2024", 10),
+                createdAt: new Date().toISOString(),
+                isActive: true,
+                lastLogin: null
+            };
+            data.users = [defaultUser]; // Replace all users with the valid admin
+            updated = true;
+            console.log('Replaced users with valid default admin user');
+        }
     }
     
     // Save migrated data if changes were made
