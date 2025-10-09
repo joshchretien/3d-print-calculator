@@ -2,8 +2,387 @@ const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
 const session = require('express-session');
+const sqlite3 = require('sqlite3').verbose();
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Database initialization
+const db = new sqlite3.Database('./calculator.db', (err) => {
+    if (err) {
+        console.error('Error opening database:', err.message);
+    } else {
+        console.log('Connected to SQLite database');
+    }
+});
+
+// Initialize database tables
+const initDatabase = () => {
+    return new Promise((resolve, reject) => {
+        db.serialize(() => {
+            // Products table
+            db.run(`CREATE TABLE IF NOT EXISTS products (
+                id TEXT PRIMARY KEY,
+                brand TEXT,
+                model TEXT,
+                style TEXT,
+                filamentPerItem REAL,
+                preset TEXT,
+                counts TEXT,
+                title TEXT,
+                packaging TEXT,
+                packagingByCount TEXT,
+                createdOn TEXT
+            )`);
+
+            // Orders table
+            db.run(`CREATE TABLE IF NOT EXISTS orders (
+                id TEXT PRIMARY KEY,
+                orderNumber TEXT,
+                product TEXT,
+                count INTEGER,
+                etsyPayout REAL,
+                shippingCost REAL,
+                productionCost REAL,
+                tjShare REAL,
+                joshShare REAL,
+                status TEXT,
+                createdOn TEXT,
+                paidOn TEXT,
+                source TEXT,
+                payoutId TEXT,
+                items TEXT
+            )`);
+
+            // Roll costs table
+            db.run(`CREATE TABLE IF NOT EXISTS rollCosts (
+                id TEXT PRIMARY KEY,
+                value REAL,
+                date TEXT
+            )`);
+
+            // Multipliers table
+            db.run(`CREATE TABLE IF NOT EXISTS multipliers (
+                id TEXT PRIMARY KEY,
+                preset TEXT,
+                count INTEGER,
+                multiplier REAL
+            )`);
+
+            // Brands table
+            db.run(`CREATE TABLE IF NOT EXISTS brands (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE
+            )`);
+
+            // Styles table
+            db.run(`CREATE TABLE IF NOT EXISTS styles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE
+            )`);
+
+            // Packaging options table
+            db.run(`CREATE TABLE IF NOT EXISTS packagingOptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE
+            )`);
+
+            // Settings table
+            db.run(`CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )`);
+
+            console.log('Database tables initialized');
+            resolve();
+        });
+    });
+};
+
+// Populate database with your current data
+const populateDatabase = () => {
+    return new Promise((resolve, reject) => {
+        db.serialize(() => {
+            // Check if database is already populated
+            db.get("SELECT COUNT(*) as count FROM products", (err, row) => {
+                if (err) {
+                    console.error('Error checking database:', err);
+                    reject(err);
+                    return;
+                }
+
+                if (row.count > 0) {
+                    console.log('Database already populated, skipping initialization');
+                    resolve();
+                    return;
+                }
+
+                console.log('Populating database with your current data...');
+
+                // Your current data
+                const currentData = {
+                    products: [
+                        {
+                            "id": "aqq52e9i",
+                            "brand": "Eufy",
+                            "model": "E120",
+                            "style": "8MM",
+                            "filamentPerItem": 6.72,
+                            "preset": "1|5|30|60|90|120",
+                            "counts": [1, 5, 30, 60, 90, 120],
+                            "title": "Eufy E120 — 8MM",
+                            "packagingByCount": {
+                                "1": "WT-ENV",
+                                "5": "OR-ENV",
+                                "30": "BLK-ENV",
+                                "60": "BLK-ENV",
+                                "90": "6x6x6",
+                                "120": "7x7x7"
+                            }
+                        },
+                        {
+                            "id": "q3ta1fse",
+                            "brand": "Eufy",
+                            "model": "E120",
+                            "style": "Advanced",
+                            "filamentPerItem": 20.6,
+                            "preset": "adv-1|5|30|60|90|120",
+                            "counts": [1, 5, 30, 60, 90, 120],
+                            "title": "Eufy E120 — Advanced",
+                            "packagingByCount": {
+                                "1": "WT-ENV",
+                                "5": "OR-ENV",
+                                "30": "6x6x6",
+                                "60": "7x7x7",
+                                "90": "18x12x2",
+                                "120": "18x12x2"
+                            }
+                        },
+                        {
+                            "id": "0bzaxnpv",
+                            "brand": "Eufy",
+                            "model": "E22",
+                            "style": "8MM",
+                            "filamentPerItem": 7.94,
+                            "preset": "1|5|30|60|90|120",
+                            "counts": [1, 5, 30, 60, 90, 120],
+                            "title": "Eufy E22 — 8MM",
+                            "packagingByCount": {
+                                "1": "WT-ENV",
+                                "5": "OR-ENV",
+                                "30": "BLK-ENV",
+                                "60": "BLK-ENV",
+                                "90": "6x6x6",
+                                "120": "7x7x7"
+                            }
+                        },
+                        {
+                            "id": "z6gm5t98",
+                            "brand": "Eufy",
+                            "model": "E22",
+                            "style": "Advanced",
+                            "filamentPerItem": 22.83,
+                            "preset": "adv-1|5|30|60|90|120",
+                            "counts": [1, 5, 30, 60, 90, 120],
+                            "title": "Eufy E22 — Advanced",
+                            "packaging": "WT-ENV",
+                            "packagingByCount": {
+                                "1": "WT-ENV",
+                                "5": "OR-ENV",
+                                "30": "6x6x6",
+                                "60": "9x9x9",
+                                "90": "18x12x2",
+                                "120": "18x12x2"
+                            }
+                        }
+                        // Add more products as needed
+                    ],
+                    brands: ["Govee", "Eufy", "Nanoleaf"],
+                    styles: ["Advanced", "8MM", "Regular", "Power Supply"],
+                    rollCosts: [
+                        { "id": "awv33vyq", "value": 25, "date": "2025-10-01" },
+                        { "id": "uizfkci6", "value": 15, "date": "2025-10-01" },
+                        { "id": "5blqs3nt", "value": 15, "date": "2025-10-04" }
+                    ],
+                    multipliers: {
+                        "1|5|30|60|90|120": { 1: 49.5, 5: 30, 30: 22, 60: 18.5, 90: 16.5, 120: 14.5 },
+                        "1|5|12|36|72|108": { 1: 49.5, 5: 30, 12: 25, 36: 20, 72: 17.5, 108: 14 },
+                        "adv-1|5|30|60|90|120": { 1: 19.5, 5: 11.5, 30: 9, 60: 7.5, 90: 6.5, 120: 6 },
+                        "adv-1|5|12|36|72|108": { 1: 19.5, 5: 11.5, 12: 10.75, 36: 10, 72: 9, 108: 7.75 },
+                        "Power Supply": { 1: 39 },
+                        "Prism": { 12: 15, 36: 13.18, 54: 12.65, 72: 12.15 },
+                        "Nanoleaf Advanced": { 1: 19.5, 30: 9 },
+                        "Nanoleaf 8MM": { 1: 39.5, 30: 17 }
+                    },
+                    packagingOptions: ["WT-ENV", "OR-ENV", "BLK-ENV", "6x6x6", "7x7x7", "9x9x9", "18x12x2", "18x12x4"],
+                    globalDiscount: 25
+                };
+
+                // Insert products
+                const insertProduct = db.prepare(`INSERT INTO products 
+                    (id, brand, model, style, filamentPerItem, preset, counts, title, packaging, packagingByCount, createdOn)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+
+                currentData.products.forEach(product => {
+                    insertProduct.run(
+                        product.id,
+                        product.brand,
+                        product.model,
+                        product.style,
+                        product.filamentPerItem,
+                        product.preset,
+                        JSON.stringify(product.counts),
+                        product.title,
+                        product.packaging || null,
+                        JSON.stringify(product.packagingByCount || {}),
+                        product.createdOn || new Date().toISOString()
+                    );
+                });
+                insertProduct.finalize();
+
+                // Insert brands
+                currentData.brands.forEach(brand => {
+                    db.run("INSERT OR IGNORE INTO brands (name) VALUES (?)", [brand]);
+                });
+
+                // Insert styles
+                currentData.styles.forEach(style => {
+                    db.run("INSERT OR IGNORE INTO styles (name) VALUES (?)", [style]);
+                });
+
+                // Insert roll costs
+                const insertRollCost = db.prepare("INSERT INTO rollCosts (id, value, date) VALUES (?, ?, ?)");
+                currentData.rollCosts.forEach(rollCost => {
+                    insertRollCost.run(rollCost.id, rollCost.value, rollCost.date);
+                });
+                insertRollCost.finalize();
+
+                // Insert multipliers
+                const insertMultiplier = db.prepare("INSERT INTO multipliers (id, preset, count, multiplier) VALUES (?, ?, ?, ?)");
+                Object.entries(currentData.multipliers).forEach(([preset, counts]) => {
+                    Object.entries(counts).forEach(([count, multiplier]) => {
+                        insertMultiplier.run(`${preset}-${count}`, preset, parseInt(count), multiplier);
+                    });
+                });
+                insertMultiplier.finalize();
+
+                // Insert packaging options
+                currentData.packagingOptions.forEach(option => {
+                    db.run("INSERT OR IGNORE INTO packagingOptions (name) VALUES (?)", [option]);
+                });
+
+                // Insert settings
+                db.run("INSERT INTO settings (key, value) VALUES (?, ?)", ["globalDiscount", currentData.globalDiscount.toString()]);
+
+                console.log('Database populated successfully with your current data');
+                resolve();
+            });
+        });
+    });
+};
+
+// Get data from database
+const getDataFromDatabase = () => {
+    return new Promise((resolve, reject) => {
+        const data = {
+            products: [],
+            orders: [],
+            rollCosts: [],
+            brands: [],
+            styles: [],
+            packagingOptions: [],
+            multipliers: {},
+            globalDiscount: 25
+        };
+
+        // Get products
+        db.all("SELECT * FROM products", (err, products) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            
+            data.products = products.map(product => ({
+                ...product,
+                counts: JSON.parse(product.counts || '[]'),
+                packagingByCount: JSON.parse(product.packagingByCount || '{}')
+            }));
+
+            // Get brands
+            db.all("SELECT name FROM brands", (err, brands) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                data.brands = brands.map(b => b.name);
+
+                // Get styles
+                db.all("SELECT name FROM styles", (err, styles) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    data.styles = styles.map(s => s.name);
+
+                    // Get packaging options
+                    db.all("SELECT name FROM packagingOptions", (err, packaging) => {
+                        if (err) {
+                            reject(err);
+                            return;
+                        }
+                        data.packagingOptions = packaging.map(p => p.name);
+
+                        // Get roll costs
+                        db.all("SELECT * FROM rollCosts", (err, rollCosts) => {
+                            if (err) {
+                                reject(err);
+                                return;
+                            }
+                            data.rollCosts = rollCosts;
+
+                            // Get multipliers
+                            db.all("SELECT * FROM multipliers", (err, multipliers) => {
+                                if (err) {
+                                    reject(err);
+                                    return;
+                                }
+                                
+                                multipliers.forEach(mult => {
+                                    if (!data.multipliers[mult.preset]) {
+                                        data.multipliers[mult.preset] = {};
+                                    }
+                                    data.multipliers[mult.preset][mult.count] = mult.multiplier;
+                                });
+
+                                // Get orders
+                                db.all("SELECT * FROM orders", (err, orders) => {
+                                    if (err) {
+                                        reject(err);
+                                        return;
+                                    }
+                                    
+                                    data.orders = orders.map(order => ({
+                                        ...order,
+                                        items: order.items ? JSON.parse(order.items) : undefined
+                                    }));
+
+                                    // Get global discount
+                                    db.get("SELECT value FROM settings WHERE key = 'globalDiscount'", (err, setting) => {
+                                        if (err) {
+                                            reject(err);
+                                            return;
+                                        }
+                                        data.globalDiscount = setting ? parseInt(setting.value) : 25;
+                                        resolve(data);
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    });
+};
 
 // ShipStation API configuration
 const SHIPSTATION_API_KEY = process.env.SHIPSTATION_API_KEY || '96c1dc6ed6ff4b7398e47284ce7763de';
@@ -307,10 +686,10 @@ app.get('/api/version', (req, res) => {
     });
 });
 
-// Get application data
+// Get application data from database
 app.get('/api/data', async (req, res) => {
     try {
-        const data = await readData();
+        const data = await getDataFromDatabase();
         res.json(data);
     } catch (error) {
         console.error('Error reading data:', error);
@@ -849,16 +1228,29 @@ app.get('/api/shipstation/test', async (req, res) => {
     }
 });
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`3D Print Calculator server running on port ${PORT}`);
-    console.log(`ShipStation API configured: ${SHIPSTATION_API_KEY && SHIPSTATION_API_SECRET ? 'Yes' : 'No'}`);
-    console.log(`WooCommerce API configured: ${WOOCOMMERCE_CONSUMER_KEY && WOOCOMMERCE_CONSUMER_SECRET ? 'Yes' : 'No'}`);
-    if (SHIPSTATION_API_KEY && SHIPSTATION_API_SECRET) {
-        console.log(`ShipStation API Key: ${SHIPSTATION_API_KEY.substring(0, 8)}...`);
+// Initialize database and start server
+const startServer = async () => {
+    try {
+        await initDatabase();
+        await populateDatabase();
+        
+        app.listen(PORT, () => {
+            console.log(`3D Print Calculator server running on port ${PORT}`);
+            console.log(`Database: SQLite (persistent across deployments)`);
+            console.log(`ShipStation API configured: ${SHIPSTATION_API_KEY && SHIPSTATION_API_SECRET ? 'Yes' : 'No'}`);
+            console.log(`WooCommerce API configured: ${WOOCOMMERCE_CONSUMER_KEY && WOOCOMMERCE_CONSUMER_SECRET ? 'Yes' : 'No'}`);
+            if (SHIPSTATION_API_KEY && SHIPSTATION_API_SECRET) {
+                console.log(`ShipStation API Key: ${SHIPSTATION_API_KEY.substring(0, 8)}...`);
+            }
+            if (WOOCOMMERCE_CONSUMER_KEY && WOOCOMMERCE_CONSUMER_SECRET) {
+                console.log(`WooCommerce URL: ${WOOCOMMERCE_URL}`);
+                console.log(`WooCommerce Consumer Key: ${WOOCOMMERCE_CONSUMER_KEY.substring(0, 8)}...`);
+            }
+        });
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
     }
-    if (WOOCOMMERCE_CONSUMER_KEY && WOOCOMMERCE_CONSUMER_SECRET) {
-        console.log(`WooCommerce URL: ${WOOCOMMERCE_URL}`);
-        console.log(`WooCommerce Consumer Key: ${WOOCOMMERCE_CONSUMER_KEY.substring(0, 8)}...`);
-    }
-});
+};
+
+startServer();
