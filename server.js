@@ -15,27 +15,31 @@ const WOOCOMMERCE_URL = 'https://deliciosadecor.com';
 const WOOCOMMERCE_CONSUMER_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY || 'ck_f803a6e8b509e5cc726bbc2fc2a1116d9879f372';
 const WOOCOMMERCE_CONSUMER_SECRET = process.env.WOOCOMMERCE_CONSUMER_SECRET || 'cs_b888ae2b936a35ff6f9a42542defd0d3ce3e6686';
 
-// Session configuration
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Session configuration (must be before static files)
 app.use(session({
     secret: process.env.SESSION_SECRET || 'deliciosa-secret-key-2024',
     resave: false,
     saveUninitialized: false,
     cookie: {
         secure: false, // Set to true in production with HTTPS
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        httpOnly: true
     }
 }));
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 app.use(express.static('.'));
 
 // Session-based authentication middleware
 const requireAuth = (req, res, next) => {
+    console.log(`Auth check for ${req.path}: authenticated=${req.session.authenticated}`);
     if (req.session.authenticated) {
         next();
     } else {
+        console.log(`Redirecting to login from ${req.path}`);
         res.redirect('/login');
     }
 };
@@ -74,9 +78,11 @@ app.post('/logout', (req, res) => {
     });
 });
 
-// Apply authentication to all routes except login
+// Apply authentication to all routes except login and static assets
 app.use((req, res, next) => {
-    if (req.path === '/login' || req.path === '/api/login') {
+    // Allow access to login page, login API, and static assets
+    if (req.path === '/login' || req.path === '/api/login' || 
+        req.path.startsWith('/assets/') || req.path === '/favicon.ico') {
         return next();
     }
     requireAuth(req, res, next);
