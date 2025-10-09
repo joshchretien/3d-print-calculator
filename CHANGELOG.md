@@ -10,6 +10,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - TBD
 
+## [1.3.2] - 2025-01-09
+
+### Added
+- **Custom Login Page**
+  - Modern, branded login interface replacing browser popup
+  - Glass-morphism design with gradient background
+  - Deliciosa Decor logo integration from CDN
+  - Session-based authentication system
+  - Professional login form with error handling
+
+### Changed
+- **Authentication System**
+  - Replaced HTTP Basic Auth with session-based authentication
+  - Improved middleware ordering for proper authentication enforcement
+  - Enhanced security with session management
+  - Added logout functionality with session destruction
+- **Login Page Branding**
+  - Updated to use official Deliciosa Decor logo
+  - Removed redundant text for cleaner design
+  - Improved visual hierarchy and user experience
+
+### Fixed
+- **Authentication Enforcement**
+  - Fixed middleware order to properly require login for main application
+  - Resolved issue where static files bypassed authentication
+  - Ensured unauthenticated users are redirected to login page
+  - Fixed authentication loop issues
+
 ## [1.2.0] - 2025-01-03
 
 ### Added
