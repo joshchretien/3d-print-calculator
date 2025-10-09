@@ -133,7 +133,7 @@ app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     
     try {
-        const data = await loadData();
+        const data = await readData();
         const user = data.users.find(u => u.email === username && u.isActive);
         
         if (user && bcrypt.compareSync(password, user.passwordHash)) {
@@ -143,7 +143,7 @@ app.post('/login', async (req, res) => {
             
             // Update last login
             user.lastLogin = new Date().toISOString();
-            await saveData(data);
+            await fs.writeFile('data.json', JSON.stringify(data, null, 2));
             
             res.json({ 
                 success: true, 
@@ -181,7 +181,7 @@ app.get('/api/users', requireAuth, async (req, res) => {
             return res.status(403).json({ error: 'Admin access required' });
         }
         
-        const data = await loadData();
+        const data = await readData();
         const users = data.users.map(user => ({
             id: user.id,
             email: user.email,
@@ -216,7 +216,7 @@ app.post('/api/users', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'Invalid access level' });
         }
         
-        const data = await loadData();
+        const data = await readData();
         
         // Check if user already exists
         if (data.users.find(u => u.email === email)) {
@@ -241,7 +241,7 @@ app.post('/api/users', requireAuth, async (req, res) => {
         };
         
         data.users.push(newUser);
-        await saveData(data);
+        await fs.writeFile('data.json', JSON.stringify(data, null, 2));
         
         // Send welcome email
         const emailSent = await sendWelcomeEmail(newUser);
@@ -274,7 +274,7 @@ app.put('/api/users/:id', requireAuth, async (req, res) => {
         const { id } = req.params;
         const { firstName, lastName, accessLevel, isActive } = req.body;
         
-        const data = await loadData();
+        const data = await readData();
         const userIndex = data.users.findIndex(u => u.id === id);
         
         if (userIndex === -1) {
@@ -287,7 +287,7 @@ app.put('/api/users/:id', requireAuth, async (req, res) => {
         if (accessLevel) data.users[userIndex].accessLevel = accessLevel;
         if (typeof isActive === 'boolean') data.users[userIndex].isActive = isActive;
         
-        await saveData(data);
+        await fs.writeFile('data.json', JSON.stringify(data, null, 2));
         
         res.json({ success: true });
     } catch (error) {
@@ -305,7 +305,7 @@ app.delete('/api/users/:id', requireAuth, async (req, res) => {
         const { id } = req.params;
         
         // Prevent deleting the last admin
-        const data = await loadData();
+        const data = await readData();
         const adminCount = data.users.filter(u => u.accessLevel === 'admin' && u.isActive).length;
         const userToDelete = data.users.find(u => u.id === id);
         
@@ -314,7 +314,7 @@ app.delete('/api/users/:id', requireAuth, async (req, res) => {
         }
         
         data.users = data.users.filter(u => u.id !== id);
-        await saveData(data);
+        await fs.writeFile('data.json', JSON.stringify(data, null, 2));
         
         res.json({ success: true });
     } catch (error) {
@@ -333,7 +333,7 @@ app.post('/api/users/:id/reset-password', requireAuth, async (req, res) => {
         const tempPassword = generateTempPassword();
         const passwordHash = bcrypt.hashSync(tempPassword, 10);
         
-        const data = await loadData();
+        const data = await readData();
         const userIndex = data.users.findIndex(u => u.id === id);
         
         if (userIndex === -1) {
@@ -342,7 +342,7 @@ app.post('/api/users/:id/reset-password', requireAuth, async (req, res) => {
         
         data.users[userIndex].passwordHash = passwordHash;
         data.users[userIndex].tempPassword = tempPassword;
-        await saveData(data);
+        await fs.writeFile('data.json', JSON.stringify(data, null, 2));
         
         // Send password reset email
         const user = data.users[userIndex];
