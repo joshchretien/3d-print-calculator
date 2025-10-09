@@ -122,6 +122,39 @@ const DEFAULT_DATA = {
     }
 };
 
+// Fallback data with your current products (embedded in server as backup)
+const FALLBACK_DATA = {
+    products: [
+        {
+            "id": "z6gm5t98",
+            "brand": "Eufy",
+            "model": "E22",
+            "style": "Advanced",
+            "filamentPerItem": 22.83,
+            "preset": "adv-1|5|30|60|90|120",
+            "counts": [1, 5, 30, 60, 90, 120],
+            "title": "Eufy E22 - Advanced",
+            "packaging": "WT-ENV",
+            "packagingByCount": {
+                "1": "WT-ENV",
+                "5": "WT-ENV",
+                "30": "WT-ENV",
+                "60": "WT-ENV",
+                "90": "WT-ENV",
+                "120": "WT-ENV"
+            }
+        }
+    ],
+    orders: [],
+    rollCosts: [],
+    multipliers: {
+        "1|5|30|60|90|120": { 1: 6.5, 5: 3.5, 30: 2, 60: 1.8, 90: 1.6, 120: 1.5 },
+        "Prism": { 12: 15, 36: 19.5, 54: 11.5, 72: 10.75 },
+        "Nanoleaf Advanced": { 1: 19.5, 30: 8 },
+        "Nanoleaf 8MM": { 1: 49.5, 30: 22 }
+    }
+};
+
 // Data migration function
 const migrateData = async (data) => {
     let updated = false;
@@ -223,11 +256,11 @@ const readData = async () => {
             console.log('Could not check for backup files:', dirError.message);
         }
         
-        // Only create new file with defaults if no backup could be restored
-        console.log('No valid data found. Creating new data.json with defaults...');
-        await fs.writeFile('data.json', JSON.stringify(DEFAULT_DATA, null, 2));
-        console.log('New data.json created with default data');
-        return DEFAULT_DATA;
+        // Use fallback data with your current products if no backup could be restored
+        console.log('No valid data found. Using fallback data with your current products...');
+        await fs.writeFile('data.json', JSON.stringify(FALLBACK_DATA, null, 2));
+        console.log('New data.json created with fallback data (your current products)');
+        return FALLBACK_DATA;
     }
 };
 
