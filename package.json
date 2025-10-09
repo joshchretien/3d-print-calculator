@@ -1,6 +1,6 @@
 {
   "name": "3d-print-calculator",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "A comprehensive business management system for 3D printing operations featuring advanced pricing calculations, order management, packaging optimization, and financial analytics.",
   "main": "server.js",
   "homepage": "https://dashboard.deliciosadecor.com",
