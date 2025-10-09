@@ -16,7 +16,7 @@
 
         // Version checking and auto-refresh functionality
         const VersionChecker = {
-            currentVersion: '1.4.0',
+            currentVersion: '1.4.5',
             checkInterval: 30000, // Check every 30 seconds
             intervalId: null,
 
@@ -2379,7 +2379,9 @@
                     <header className="bg-white shadow-sm border-b border-gray-200">
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                             <div className="flex justify-between items-center h-16">
-                                <img src="assets/logo.png" alt="Deliciosa Decor" className="h-10" />
+                                <a href="https://d-print-calculator-hi9gi.kinsta.app/" className="cursor-pointer">
+                                    <img src="assets/logo.png" alt="Deliciosa Decor" className="h-10 hover:opacity-80 transition-opacity duration-200" />
+                                </a>
                                 <div className="flex items-center space-x-8">
                                     <nav className="flex space-x-8">
                                         {tabs.map(([key, label]) => (
@@ -2421,7 +2423,7 @@
                                         )}
                                         <div className="flex items-center text-xs text-gray-400 mr-4">
                                             <span>v{VersionChecker.currentVersion}</span>
-                                            <span className="ml-1 text-blue-500">🔵</span>
+                                            <span className="ml-1 text-purple-500">🟣</span>
                                         </div>
                                         <button
                                             onClick={() => window.location.reload()}

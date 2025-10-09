@@ -10,6 +10,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - TBD
 
+## [1.4.5] - 2025-10-09
+
+### Added
+- **Kinsta Persistent Storage Integration**
+  - SQLite database now uses Kinsta's persistent storage volume
+  - Database file stored at `/var/lib/data/calculator.db`
+  - Persistent data backup file for additional data safety
+  - Environment variable configuration for storage path
+
+### Changed
+- **Data Persistence Architecture**
+  - Migrated from ephemeral file system to persistent storage
+  - Database and data files now survive deployments and restarts
+  - Enhanced server startup with persistent storage path logging
+  - Improved data restoration process from persistent storage
+
+### Fixed
+- **Critical Data Loss Issue**
+  - Resolved persistent data loss during Kinsta deployments
+  - Fixed SQLite database being wiped on every server restart
+  - Implemented true data persistence across all deployment cycles
+  - Data now survives container rebuilds and scaling events
+
+### Technical Improvements
+- **Storage Configuration**
+  - Added `PERSISTENT_STORAGE_PATH` environment variable support
+  - Fallback to local paths when persistent storage not configured
+  - Enhanced database initialization with path logging
+  - Improved error handling for storage operations
+
+## [1.4.4] - 2025-10-09
+
+### Changed
+- **Persistent Storage Configuration**
+  - Updated database path to use Kinsta persistent storage
+  - Added environment variable support for storage configuration
+  - Prepared application for Kinsta persistent storage integration
+
+### Technical
+- Database and persistent files now use configurable storage paths
+- Enhanced logging for database and storage operations
+
 ## [1.3.3] - 2025-01-09
 
 ### Added
