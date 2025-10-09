@@ -137,6 +137,14 @@ app.post('/login', async (req, res) => {
         console.log(`Login attempt for: ${username}`);
         console.log(`Total users: ${data.users ? data.users.length : 0}`);
         
+        // Debug: Show all users
+        if (data.users && data.users.length > 0) {
+            console.log('Existing users:');
+            data.users.forEach((u, index) => {
+                console.log(`  User ${index}: email="${u.email}", active=${u.isActive}`);
+            });
+        }
+        
         const user = data.users.find(u => u.email === username && u.isActive);
         console.log(`User found: ${user ? 'Yes' : 'No'}`);
         
@@ -431,21 +439,25 @@ const migrateData = async (data) => {
     
     // Ensure default admin user exists
     if (!data.users || data.users.length === 0) {
-        data.users = [
-            {
-                id: "default-admin",
-                email: "orders@deliciosadecor.com",
-                firstName: "Admin",
-                lastName: "User",
-                accessLevel: "admin",
-                passwordHash: bcrypt.hashSync("deliciosa2024", 10),
-                createdAt: new Date().toISOString(),
-                isActive: true,
-                lastLogin: null
-            }
-        ];
+        const defaultUser = {
+            id: "default-admin",
+            email: "orders@deliciosadecor.com",
+            firstName: "Admin",
+            lastName: "User",
+            accessLevel: "admin",
+            passwordHash: bcrypt.hashSync("deliciosa2024", 10),
+            createdAt: new Date().toISOString(),
+            isActive: true,
+            lastLogin: null
+        };
+        data.users = [defaultUser];
         updated = true;
-        console.log('Created default admin user');
+        console.log('Created default admin user:', defaultUser.email);
+    } else {
+        console.log(`Users already exist: ${data.users.length} users found`);
+        data.users.forEach((u, index) => {
+            console.log(`  Existing user ${index}: ${u.email} (active: ${u.isActive})`);
+        });
     }
     
     // Save migrated data if changes were made
