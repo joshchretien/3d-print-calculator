@@ -124,6 +124,10 @@ app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     
     console.log(`Login attempt: username="${username}"`);
+    console.log(`Expected username: "${AUTH_USERNAME}"`);
+    console.log(`Expected password: "${AUTH_PASSWORD}"`);
+    console.log(`Username match: ${username === AUTH_USERNAME}`);
+    console.log(`Password match: ${password === AUTH_PASSWORD}`);
     
     if (username === AUTH_USERNAME && password === AUTH_PASSWORD) {
         req.session.authenticated = true;
@@ -409,4 +413,7 @@ function processWooCommerceLineItem(item) {
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`AUTH_USERNAME: "${AUTH_USERNAME}"`);
+    console.log(`AUTH_PASSWORD: "${AUTH_PASSWORD}"`);
+    console.log(`SESSION_SECRET: "${process.env.SESSION_SECRET || 'default'}"`);
 });
