@@ -6,12 +6,16 @@ const sqlite3 = require('sqlite3').verbose();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Database initialization
-const db = new sqlite3.Database('./calculator.db', (err) => {
+// Database initialization - use persistent storage if available
+const DB_PATH = process.env.PERSISTENT_STORAGE_PATH ? 
+    `${process.env.PERSISTENT_STORAGE_PATH}/calculator.db` : 
+    './calculator.db';
+
+const db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) {
         console.error('Error opening database:', err.message);
     } else {
-        console.log('Connected to SQLite database');
+        console.log(`Connected to SQLite database at: ${DB_PATH}`);
     }
 });
 
@@ -117,9 +121,12 @@ const populateDatabase = () => {
                 }
 
                 // Check if we have persistent data file
-                fs.access('persistent-data.json').then(async () => {
+                const PERSISTENT_FILE_PATH = process.env.PERSISTENT_STORAGE_PATH ? 
+                    `${process.env.PERSISTENT_STORAGE_PATH}/persistent-data.json` : 
+                    'persistent-data.json';
+                fs.access(PERSISTENT_FILE_PATH).then(async () => {
                     try {
-                        const persistentData = await fs.readFile('persistent-data.json', 'utf8');
+                        const persistentData = await fs.readFile(PERSISTENT_FILE_PATH, 'utf8');
                         if (persistentData && persistentData.trim() !== '') {
                             console.log('Found persistent data file, restoring...');
                             const data = JSON.parse(persistentData);
@@ -865,9 +872,12 @@ app.post('/api/data', async (req, res) => {
         // Save to database
         await saveDataToDatabase(data);
         
-        // Also save to a persistent file that will be committed to Git
-        await fs.writeFile('persistent-data.json', JSON.stringify(data, null, 2));
-        console.log('Data saved to persistent file');
+        // Also save to a persistent file (will be in persistent storage if configured)
+        const PERSISTENT_FILE_PATH = process.env.PERSISTENT_STORAGE_PATH ? 
+            `${process.env.PERSISTENT_STORAGE_PATH}/persistent-data.json` : 
+            'persistent-data.json';
+        await fs.writeFile(PERSISTENT_FILE_PATH, JSON.stringify(data, null, 2));
+        console.log(`Data saved to persistent file at: ${PERSISTENT_FILE_PATH}`);
         
         console.log('Data saved successfully to database and persistent storage');
         res.json({ success: true });
