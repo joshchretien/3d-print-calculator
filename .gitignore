@@ -49,6 +49,10 @@ Thumbs.db
 *-backup.html
 *backup*
 
+# Data files (should not be committed to prevent data loss)
+data.json
+data-*.json
+
 # Development files we don't need
 test-power-supply.html
 updated-calculator.html
