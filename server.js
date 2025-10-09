@@ -347,6 +347,7 @@ app.post('/api/users', requireAuth, async (req, res) => {
                 createdAt: newUser.createdAt,
                 isActive: newUser.isActive
             },
+            tempPassword: newUser.tempPassword,
             emailSent
         });
     } catch (error) {
