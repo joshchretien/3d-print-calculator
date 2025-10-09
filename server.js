@@ -41,6 +41,14 @@ const sendWelcomeEmail = async (user) => {
         return false;
     }
     
+    console.log('Attempting to send welcome email to:', user.email);
+    console.log('Email config:', {
+        host: EMAIL_CONFIG.host,
+        port: EMAIL_CONFIG.port,
+        secure: EMAIL_CONFIG.secure,
+        user: EMAIL_CONFIG.auth.user
+    });
+    
     try {
         const mailOptions = {
             from: '"Deliciosa Decor" <orders@deliciosadecor.com>',
@@ -83,10 +91,11 @@ const sendWelcomeEmail = async (user) => {
         };
         
         await emailTransporter.sendMail(mailOptions);
-        console.log(`Welcome email sent to ${user.email}`);
+        console.log(`Welcome email sent successfully to ${user.email}`);
         return true;
     } catch (error) {
-        console.error('Error sending welcome email:', error);
+        console.error('Error sending welcome email:', error.message);
+        console.error('Full error:', error);
         return false;
     }
 };
@@ -374,6 +383,40 @@ app.post('/api/users/:id/reset-password', requireAuth, async (req, res) => {
         res.json({ success: true, emailSent });
     } catch (error) {
         console.error('Error resetting password:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Test email endpoint (admin only)
+app.post('/api/test-email', requireAuth, async (req, res) => {
+    try {
+        if (req.session.accessLevel !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+        
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ error: 'Email address required' });
+        }
+        
+        const testUser = {
+            email,
+            firstName: 'Test',
+            lastName: 'User',
+            tempPassword: 'test123',
+            accessLevel: 'admin'
+        };
+        
+        console.log('Testing email to:', email);
+        const emailSent = await sendWelcomeEmail(testUser);
+        
+        res.json({ 
+            success: true, 
+            emailSent,
+            message: emailSent ? 'Test email sent successfully' : 'Test email failed'
+        });
+    } catch (error) {
+        console.error('Error testing email:', error);
         res.status(500).json({ error: 'Server error' });
     }
 });
