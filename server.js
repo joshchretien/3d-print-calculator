@@ -384,6 +384,124 @@ const getDataFromDatabase = () => {
     });
 };
 
+// Save data to database
+const saveDataToDatabase = (data) => {
+    return new Promise((resolve, reject) => {
+        db.serialize(() => {
+            // Clear existing data
+            db.run("DELETE FROM products");
+            db.run("DELETE FROM orders");
+            db.run("DELETE FROM rollCosts");
+            db.run("DELETE FROM brands");
+            db.run("DELETE FROM styles");
+            db.run("DELETE FROM packagingOptions");
+            db.run("DELETE FROM multipliers");
+            db.run("DELETE FROM settings");
+
+            // Insert products
+            if (data.products && data.products.length > 0) {
+                const insertProduct = db.prepare(`INSERT INTO products 
+                    (id, brand, model, style, filamentPerItem, preset, counts, title, packaging, packagingByCount, createdOn)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+
+                data.products.forEach(product => {
+                    insertProduct.run(
+                        product.id,
+                        product.brand,
+                        product.model,
+                        product.style,
+                        product.filamentPerItem,
+                        product.preset,
+                        JSON.stringify(product.counts || []),
+                        product.title,
+                        product.packaging || null,
+                        JSON.stringify(product.packagingByCount || {}),
+                        product.createdOn || new Date().toISOString()
+                    );
+                });
+                insertProduct.finalize();
+            }
+
+            // Insert orders
+            if (data.orders && data.orders.length > 0) {
+                const insertOrder = db.prepare(`INSERT INTO orders 
+                    (id, orderNumber, product, count, etsyPayout, shippingCost, productionCost, tjShare, joshShare, status, createdOn, paidOn, source, payoutId, items)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+
+                data.orders.forEach(order => {
+                    insertOrder.run(
+                        order.id,
+                        order.orderNumber,
+                        order.product,
+                        order.count,
+                        order.etsyPayout,
+                        order.shippingCost,
+                        order.productionCost,
+                        order.tjShare,
+                        order.joshShare,
+                        order.status,
+                        order.createdOn,
+                        order.paidOn,
+                        order.source,
+                        order.payoutId,
+                        order.items ? JSON.stringify(order.items) : null
+                    );
+                });
+                insertOrder.finalize();
+            }
+
+            // Insert brands
+            if (data.brands && data.brands.length > 0) {
+                data.brands.forEach(brand => {
+                    db.run("INSERT INTO brands (name) VALUES (?)", [brand]);
+                });
+            }
+
+            // Insert styles
+            if (data.styles && data.styles.length > 0) {
+                data.styles.forEach(style => {
+                    db.run("INSERT INTO styles (name) VALUES (?)", [style]);
+                });
+            }
+
+            // Insert roll costs
+            if (data.rollCosts && data.rollCosts.length > 0) {
+                const insertRollCost = db.prepare("INSERT INTO rollCosts (id, value, date) VALUES (?, ?, ?)");
+                data.rollCosts.forEach(rollCost => {
+                    insertRollCost.run(rollCost.id, rollCost.value, rollCost.date);
+                });
+                insertRollCost.finalize();
+            }
+
+            // Insert multipliers
+            if (data.multipliers) {
+                const insertMultiplier = db.prepare("INSERT INTO multipliers (id, preset, count, multiplier) VALUES (?, ?, ?, ?)");
+                Object.entries(data.multipliers).forEach(([preset, counts]) => {
+                    Object.entries(counts).forEach(([count, multiplier]) => {
+                        insertMultiplier.run(`${preset}-${count}`, preset, parseInt(count), multiplier);
+                    });
+                });
+                insertMultiplier.finalize();
+            }
+
+            // Insert packaging options
+            if (data.packagingOptions && data.packagingOptions.length > 0) {
+                data.packagingOptions.forEach(option => {
+                    db.run("INSERT INTO packagingOptions (name) VALUES (?)", [option]);
+                });
+            }
+
+            // Insert settings
+            if (data.globalDiscount !== undefined) {
+                db.run("INSERT INTO settings (key, value) VALUES (?, ?)", ["globalDiscount", data.globalDiscount.toString()]);
+            }
+
+            console.log('All data saved to database successfully');
+            resolve();
+        });
+    });
+};
+
 // ShipStation API configuration
 const SHIPSTATION_API_KEY = process.env.SHIPSTATION_API_KEY || '96c1dc6ed6ff4b7398e47284ce7763de';
 const SHIPSTATION_API_SECRET = process.env.SHIPSTATION_API_SECRET || '55cf2319bdb445cf8520722d3e0ee35f';
@@ -697,24 +815,18 @@ app.get('/api/data', async (req, res) => {
     }
 });
 
-// Save application data
+// Save application data to database
 app.post('/api/data', async (req, res) => {
     try {
-        // Create backup before saving new data
-        try {
-            const timestamp = Date.now();
-            const backupName = `data-backup-${timestamp}.json`;
-            await fs.copyFile('data.json', backupName);
-            console.log(`Backup created: ${backupName}`);
-        } catch (backupError) {
-            console.log('Could not create backup (file might not exist):', backupError.message);
-        }
+        const data = req.body;
+        console.log('Saving data to database...');
         
-        await fs.writeFile('data.json', JSON.stringify(req.body, null, 2));
-        console.log('Data saved successfully');
+        // Clear existing data and save new data to database
+        await saveDataToDatabase(data);
+        console.log('Data saved successfully to database');
         res.json({ success: true });
     } catch (error) {
-        console.error('Error saving data:', error);
+        console.error('Error saving data to database:', error);
         res.status(500).json({ error: 'Failed to save data' });
     }
 });
