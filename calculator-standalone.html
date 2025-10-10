@@ -956,6 +956,7 @@
             
             // Edit order state
             const [editingOrder, setEditingOrder] = useState(null);
+            const [editMaker, setEditMaker] = useState("TJ");
             const [editSource, setEditSource] = useState("Etsy");
             const [editOrderNumber, setEditOrderNumber] = useState("");
             const [editEtsyPayout, setEditEtsyPayout] = useState("");
@@ -1332,6 +1333,7 @@
 
             const startEditOrder = useCallback((order) => {
                 setEditingOrder(order);
+                setEditMaker(order.maker || 'TJ');
                 setEditSource(order.source || 'Etsy');
                 setEditOrderNumber(order.orderNumber || '');
                 setEditEtsyPayout(order.etsyPayout || '');
@@ -1341,6 +1343,7 @@
 
             const cancelEditOrder = useCallback(() => {
                 setEditingOrder(null);
+                setEditMaker('TJ');
                 setEditSource('Etsy');
                 setEditOrderNumber('');
                 setEditEtsyPayout('');
@@ -1388,18 +1391,25 @@
                 
                 // Calculate TJ and Josh shares for the entire order
                 const profit = payout - shipping - totalProductionCost;
-                const tjProfitShare = profit * CONSTANTS.TJ_SHARE_PERCENTAGE;
-                const joshProfitShare = profit * (1 - CONSTANTS.TJ_SHARE_PERCENTAGE);
+                let tjShare, joshShare;
                 
-                // TJ gets 70% of profit PLUS production cost
-                const tjShare = tjProfitShare + totalProductionCost;
-                // Josh gets 30% of profit
-                const joshShare = joshProfitShare;
+                if (editMaker === "Josh") {
+                    // Josh gets 100% of payouts (payout - shipping) + production cost
+                    joshShare = profit + totalProductionCost;
+                    tjShare = 0;
+                } else {
+                    // Default TJ logic: TJ gets 70% of profit PLUS production cost
+                    const tjProfitShare = profit * CONSTANTS.TJ_SHARE_PERCENTAGE;
+                    const joshProfitShare = profit * (1 - CONSTANTS.TJ_SHARE_PERCENTAGE);
+                    tjShare = tjProfitShare + totalProductionCost;
+                    joshShare = joshProfitShare;
+                }
                 
                 dispatch({ 
                     type: ACTIONS.UPDATE_ORDER, 
                     id: editingOrder.id, 
                     updates: { 
+                        maker: editMaker,
                         source: editSource,
                         orderNumber: editOrderNumber.trim(),
                         etsyPayout: payout,
@@ -1413,7 +1423,7 @@
                 
                 cancelEditOrder();
                 alert("Order updated successfully!");
-            }, [editSource, editOrderNumber, editEtsyPayout, editShippingCost, editOrderItems, editingOrder, state.products, state.rollCosts, dispatch]);
+            }, [editMaker, editSource, editOrderNumber, editEtsyPayout, editShippingCost, editOrderItems, editingOrder, state.products, state.rollCosts, dispatch]);
 
             const totalTjShare = useMemo(() => {
                 return orders.reduce((sum, order) => sum + (order.tjShare || 0), 0);
@@ -1711,7 +1721,18 @@
                                 </div>
                                 
                                 {/* Order Header */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Maker</label>
+                                        <select
+                                            value={editMaker}
+                                            onChange={(e) => setEditMaker(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                        >
+                                            <option value="TJ">TJ</option>
+                                            <option value="Josh">Josh</option>
+                                        </select>
+                                    </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Source</label>
                                         <select
