@@ -274,6 +274,11 @@
     } else {
                 state.multipliers = { ...DEFAULT_MULTIPLIERS, ...state.multipliers };
             }
+            
+            // Remove old "Eufy S4" multiplier entry if it exists
+            if (state.multipliers["Eufy S4"]) {
+                delete state.multipliers["Eufy S4"];
+            }
 
             // Migrate preset names for existing products
             state.products = state.products.map(product => {

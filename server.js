@@ -749,6 +749,12 @@ const migrateData = async (data) => {
         updated = true;
     }
     
+    // Remove old "Eufy S4" multiplier entry if it exists
+    if (data.multipliers && data.multipliers["Eufy S4"]) {
+        delete data.multipliers["Eufy S4"];
+        updated = true;
+    }
+    
     // Migrate orders to have source field
     if (data.orders) {
         data.orders.forEach(order => {
