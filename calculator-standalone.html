@@ -387,7 +387,7 @@
             const latestRoll = useMemo(() => state.rollCosts[state.rollCosts.length - 1]?.value || CONSTANTS.DEFAULT_ROLL_COST, [state.rollCosts]);
             const costPerGram = useMemo(() => latestRoll / 1000, [latestRoll]);
             const mpKey = useMemo(() => ensurePresetForStyle(product.style, product.preset, state.multipliers), [product.style, product.preset, state.multipliers]);
-            const multipliers = useMemo(() => state.multipliers[mpKey] || {}, [state.multipliers, mpKey]);
+            const multipliers = useMemo(() => state.multipliers[mpKey] || DEFAULT_MULTIPLIERS[mpKey] || {}, [state.multipliers, mpKey]);
 
             const handleRemove = useCallback(() => {
                 if (confirm(`Are you sure you want to remove "${product.title}"? This action cannot be undone.`)) {
