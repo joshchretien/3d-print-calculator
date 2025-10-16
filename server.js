@@ -765,14 +765,6 @@ const migrateData = async (data) => {
         updated = true;
     }
     
-    // Fix roll cost to $10.00 to get $0.01 per gram calculation
-    if (data.rollCosts && data.rollCosts.length > 0) {
-        const latestRoll = data.rollCosts[data.rollCosts.length - 1];
-        if (latestRoll.value !== 10) {
-            data.rollCosts.push({ id: Date.now().toString(), value: 10, date: new Date().toISOString().slice(0, 10) });
-            updated = true;
-        }
-    }
     
     // Migrate orders to have source field
     if (data.orders) {

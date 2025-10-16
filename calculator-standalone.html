@@ -288,13 +288,6 @@
                 state.multipliers["5|72|108|144"] = { 1: 50, 5: 30, 72: 20, 108: 18, 144: 16 };
             }
             
-            // Fix roll cost to $10.00 to get $0.01 per gram calculation
-            if (state.rollCosts && state.rollCosts.length > 0) {
-                const latestRoll = state.rollCosts[state.rollCosts.length - 1];
-                if (latestRoll.value !== 10) {
-                    state.rollCosts.push({ id: utils.uid(), value: 10, date: utils.today() });
-                }
-            }
 
             // Migrate preset names for existing products
             state.products = state.products.map(product => {
@@ -484,7 +477,7 @@
                     <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                         <p className="text-sm text-gray-600">
                             <span className="font-medium">Roll cost:</span> {utils.money(latestRoll)} | 
-                            <span className="font-medium ml-2">Cost per gram:</span> {utils.money(costPerGram)}
+                            <span className="font-medium ml-2">Cost per gram:</span> ${costPerGram.toFixed(3)}
                         </p>
                         {!isEditing ? (
                             <p className="text-sm text-gray-600 mt-1">
@@ -571,12 +564,15 @@
                             <tbody>
                                 {product.counts.map((count) => {
                                     const unitMultiplier = Number(multipliers[count] || 0);
-                                    const filament = Number(((product.filamentPerItem || 0) * count).toFixed(2));
-                                    const myCost = Number((filament * costPerGram).toFixed(2));
-                                    const total = myCost * unitMultiplier;
+                                    const filament = (product.filamentPerItem || 0) * count;
+                                    const myCostPrecise = filament * costPerGram;
+                                    const total = myCostPrecise * unitMultiplier;
                                     const discountPercentage = (state.globalDiscount !== undefined ? state.globalDiscount : 25) / 100;
                                     const discountTotal = total * (1 - discountPercentage);
-                                    const gross = discountTotal - myCost;
+                                    const gross = discountTotal - myCostPrecise;
+                                    
+                                    // Round only for display
+                                    const myCostDisplay = Number(myCostPrecise.toFixed(2));
 
                                     return (
                                         <tr key={count} className="border-b hover:bg-gray-50 transition-colors">
@@ -584,8 +580,8 @@
                                             <td className="p-3 text-right font-medium">{utils.money(total / count)}</td>
                                             <td className="p-3 text-right font-medium">{utils.money(total)}</td>
                                             <td className="p-3 text-right text-blue-600 font-medium">{utils.money(discountTotal)}</td>
-                                            <td className="p-3 text-right text-gray-600">{filament}</td>
-                                            <td className="p-3 text-right text-gray-600">{utils.money(myCost)}</td>
+                                            <td className="p-3 text-right text-gray-600">{filament.toFixed(2)}</td>
+                                            <td className="p-3 text-right text-gray-600">{utils.money(myCostDisplay)}</td>
                                             <td className="p-3 text-right text-green-600 font-medium">{utils.money(gross)}</td>
                                             <td className="p-3 text-left text-gray-700">{product.packagingByCount?.[count] || '—'}</td>
                                         </tr>
