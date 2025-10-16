@@ -279,6 +279,14 @@
             if (state.multipliers["Eufy S4"]) {
                 delete state.multipliers["Eufy S4"];
             }
+            
+            // Force update the new presets to ensure they have the correct multipliers
+            if (state.multipliers["adv-5|72|108|144"]) {
+                state.multipliers["adv-5|72|108|144"] = { 1: 50, 5: 11, 72: 10, 108: 9.5, 144: 9 };
+            }
+            if (state.multipliers["5|72|108|144"]) {
+                state.multipliers["5|72|108|144"] = { 1: 50, 5: 30, 72: 20, 108: 18, 144: 16 };
+            }
 
             // Migrate preset names for existing products
             state.products = state.products.map(product => {
