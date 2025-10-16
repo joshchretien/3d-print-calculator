@@ -283,6 +283,10 @@
                 if (product.preset === "Eufy S4") {
                     return { ...product, preset: "adv-5|72|108|144" };
                 }
+                // Force refresh of counts for products using the new presets
+                if (product.preset === "adv-5|72|108|144" || product.preset === "5|72|108|144") {
+                    return { ...product, counts: [1, 5, 72, 108, 144] };
+                }
                 return product;
             });
 
