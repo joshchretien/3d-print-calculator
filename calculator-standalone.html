@@ -287,6 +287,14 @@
             if (state.multipliers["5|72|108|144"]) {
                 state.multipliers["5|72|108|144"] = { 1: 50, 5: 30, 72: 20, 108: 18, 144: 16 };
             }
+            
+            // Fix roll cost to $10.00 to get $0.01 per gram calculation
+            if (state.rollCosts && state.rollCosts.length > 0) {
+                const latestRoll = state.rollCosts[state.rollCosts.length - 1];
+                if (latestRoll.value !== 10) {
+                    state.rollCosts.push({ id: utils.uid(), value: 10, date: utils.today() });
+                }
+            }
 
             // Migrate preset names for existing products
             state.products = state.products.map(product => {
