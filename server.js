@@ -755,12 +755,12 @@ const migrateData = async (data) => {
         updated = true;
     }
     
-    // Force update the new presets to ensure they have the correct multipliers
-    if (data.multipliers && data.multipliers["adv-5|72|108|144"]) {
+    // Only set default multipliers if the preset doesn't exist
+    if (data.multipliers && !data.multipliers["adv-5|72|108|144"]) {
         data.multipliers["adv-5|72|108|144"] = { 1: 50, 5: 11, 72: 10, 108: 9.5, 144: 9 };
         updated = true;
     }
-    if (data.multipliers && data.multipliers["5|72|108|144"]) {
+    if (data.multipliers && !data.multipliers["5|72|108|144"]) {
         data.multipliers["5|72|108|144"] = { 1: 50, 5: 30, 72: 20, 108: 18, 144: 16 };
         updated = true;
     }
