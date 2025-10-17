@@ -10,6 +10,133 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - TBD
 
+## [1.6.5] - 2025-01-09
+
+### Fixed
+- **Migration Logic Override Issue**
+  - Fixed aggressive migration logic that was overriding user multiplier changes
+  - Changed from force update to conditional update (only set if missing)
+  - Preserves user's custom multiplier values in both client and server
+  - Resolved issue where multiplier changes were being reset to defaults
+
+## [1.6.4] - 2025-01-09
+
+### Fixed
+- **ManageTab Multiplier Display Sync**
+  - Added useEffect to sync local multipliers state with global state
+  - Fixed ManageTab showing outdated multiplier values after saves
+  - Ensures multiplier text area always reflects current state values
+  - Resolved confusion between displayed values and actual calculations
+
+## [1.6.3] - 2025-01-09
+
+### Fixed
+- **Multiplier Update Reactivity**
+  - Fixed ProductTable not re-rendering when multipliers change in Manage tab
+  - Changed useMemo dependency from [state.multipliers, mpKey] to [state.multipliers[mpKey], mpKey]
+  - More precise dependency tracking for better component reactivity
+  - Real-time updates when saving multiplier changes
+
+## [1.6.2] - 2025-01-09
+
+### Fixed
+- **My Cost Calculation Precision**
+  - Fixed rounding issue where My Cost was rounded before total calculation
+  - Changed cost per gram display to show $0.015 (3 decimal places) instead of $0.01
+  - Uses precise values for calculations, rounds only for display
+  - Removed incorrect roll cost migration that was changing $15 to $10
+
+### Changed
+- **Calculation Accuracy**
+  - My Cost now uses precise filament × costPerGram values
+  - Total calculations use precise My Cost × multiplier
+  - Display shows rounded values but calculations maintain precision
+  - Improved calculation accuracy for all count tiers
+
+## [1.6.1] - 2025-01-09
+
+### Fixed
+- **My Cost Calculation Error**
+  - Fixed My Cost showing $0.10 instead of $0.0672 for 1 count
+  - Fixed Total showing $5.00 instead of $3.36 for 1 count
+  - Root cause: system was using $0.015 per gram but displaying $0.01
+  - Added migration to ensure correct roll cost and cost per gram calculation
+
+## [1.6.0] - 2025-01-09
+
+### Added
+- **Maker Dropdown for Orders**
+  - Added Maker field to Add Order section (TJ/Josh options)
+  - TJ gets 70% of profit + production cost (default behavior)
+  - Josh gets 100% of (payout - shipping) + production cost when selected
+  - Maker field displayed in Orders table with color coding
+  - Editable in Edit Order modal
+
+### Changed
+- **Order Financial Calculations**
+  - Modified payout logic based on selected maker
+  - Josh selection overrides default 70/30 profit split
+  - TJ gets $0 when Josh is selected as maker
+  - Enhanced order object with maker field tracking
+
+### Fixed
+- **Multiplier System Updates**
+  - Added new multiplier presets: "adv-5|72|108|144" and "5|72|108|144"
+  - Removed old "Eufy S4" multiplier entry
+  - Force update migration for correct multiplier values
+  - Enhanced migration logic for preset name changes
+
+## [1.5.9] - 2025-01-09
+
+### Fixed
+- **Old Multiplier Entry Cleanup**
+  - Added migration to explicitly remove old "Eufy S4" multiplier entry
+  - Ensures clean multiplier data structure
+  - Prevents old data from interfering with new preset structure
+
+## [1.5.8] - 2025-01-09
+
+### Added
+- **WooCommerce API Integration**
+  - Automatic payout amount lookup for website orders
+  - Auto-population of product line items from WooCommerce
+  - Smart product mapping from WooCommerce to internal catalog
+  - Count extraction from variant names (e.g., "90 Brackets" → 90)
+  - Fallback to manual entry when mapping fails
+
+### Changed
+- **Order Source Detection**
+  - Source field automatically updates based on scanned order number
+  - Etsy orders default to Etsy source
+  - Website orders default to Website source
+  - Enhanced order workflow with smart source detection
+
+### Technical
+- Added WooCommerce API endpoints with proper authentication
+- Enhanced ShipStation integration with improved error handling
+- Improved order scanning workflow with multiple API integrations
+
+## [1.5.7] - 2025-01-09
+
+### Added
+- **Custom Domain Support**
+  - Application now runs at root domain (dashboard.deliciosadecor.com)
+  - Removed /calculator-standalone.html from URL
+  - Logo links to custom domain
+  - Clean URL structure for professional appearance
+
+### Changed
+- **Server Configuration**
+  - Modified root route to serve main application directly
+  - Updated login redirects to use root domain
+  - Enhanced domain configuration for Kinsta deployment
+
+### Fixed
+- **URL Structure**
+  - Resolved issue where full path was showing in browser
+  - Clean domain display in address bar
+  - Proper routing for all application pages
+
 ## [1.4.5] - 2025-10-09
 
 ### Added
