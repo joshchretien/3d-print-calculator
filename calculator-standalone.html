@@ -1515,6 +1515,7 @@
             <div className={`mb-6 rounded-xl shadow-lg border border-gray-200 transition-colors duration-300 ${
                 source === 'Website' ? 'bg-blue-50 border-blue-200' : 
                 source === 'Etsy' ? 'bg-orange-50 border-orange-200' : 
+                source === 'eBay' ? 'bg-green-50 border-green-200' :
                 'bg-white'
             }`}>
                         <div className="p-4 border-b border-gray-200">
@@ -1523,6 +1524,7 @@
                                 <div className={`text-sm px-3 py-1 rounded-lg flex items-center gap-2 transition-colors duration-300 ${
                                     source === 'Website' ? 'text-blue-700 bg-blue-100' : 
                                     source === 'Etsy' ? 'text-orange-700 bg-orange-100' : 
+                                    source === 'eBay' ? 'text-green-700 bg-green-100' :
                                     'text-gray-600 bg-blue-50'
                                 }`}>
                                     📱 Scan barcode to auto-fill order details
@@ -1555,6 +1557,7 @@
                                     >
                                         <option value="Etsy">Etsy</option>
                                         <option value="Website">Website</option>
+                                        <option value="eBay">eBay</option>
                                     </select>
                                 </div>
                                 <div>
@@ -1773,6 +1776,7 @@
                                         >
                                             <option value="Etsy">Etsy</option>
                                             <option value="Website">Website</option>
+                                            <option value="eBay">eBay</option>
                                         </select>
                                     </div>
                                     <div>
@@ -2044,6 +2048,7 @@
                                                     <tr key={`${order.id}-${itemIndex}`} className={`border-b transition-colors ${
                                                         order.source === 'Etsy' ? 'bg-orange-50 hover:bg-orange-100' : 
                                                         order.source === 'Website' ? 'bg-blue-50 hover:bg-blue-100' : 
+                                                        order.source === 'eBay' ? 'bg-green-50 hover:bg-green-100' :
                                                         'hover:bg-gray-50'
                                                     }`}>
                                                         <td className="p-3">
@@ -2071,6 +2076,7 @@
                                                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                                                     order.source === 'Etsy' ? 'bg-orange-100 text-orange-800' : 
                                                                     order.source === 'Website' ? 'bg-blue-100 text-blue-800' : 
+                                                                    order.source === 'eBay' ? 'bg-green-100 text-green-800' :
                                                                     'bg-gray-100 text-gray-800'
                                                                 }`}>
                                                                     {order.source || 'Etsy'}
@@ -2207,6 +2213,7 @@
                                                                     <tr key={`${order.id}-${itemIndex}`} className={`border-b transition-colors ${
                                                                         order.source === 'Etsy' ? 'bg-orange-50 hover:bg-orange-100' : 
                                                                         order.source === 'Website' ? 'bg-blue-50 hover:bg-blue-100' : 
+                                                                        order.source === 'eBay' ? 'bg-green-50 hover:bg-green-100' :
                                                                         'hover:bg-gray-50'
                                                                     }`}>
                                                                         <td className="p-3 font-medium">
@@ -2214,6 +2221,7 @@
                                                                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                                                                     order.source === 'Etsy' ? 'bg-orange-100 text-orange-800' : 
                                                                                     order.source === 'Website' ? 'bg-blue-100 text-blue-800' : 
+                                                                                    order.source === 'eBay' ? 'bg-green-100 text-green-800' :
                                                                                     'bg-gray-100 text-gray-800'
                                                                                 }`}>
                                                                                     {order.source || 'Etsy'}
