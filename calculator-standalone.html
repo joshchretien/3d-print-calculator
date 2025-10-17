@@ -2284,6 +2284,11 @@
             const [packagingOptions, setPackagingOptions] = useState(state.packagingOptions.join("\n"));
             const [multipliers, setMultipliers] = useState(JSON.stringify(state.multipliers, null, 2));
 
+            // Sync local multipliers state with global state
+            useEffect(() => {
+                setMultipliers(JSON.stringify(state.multipliers, null, 2));
+            }, [state.multipliers]);
+
             const addRollCost = useCallback(() => {
                 const value = utils.validateNumber(roll);
                 if (value <= 0) {
