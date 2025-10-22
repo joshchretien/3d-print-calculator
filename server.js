@@ -470,14 +470,15 @@ const saveDataToDatabase = (data) => {
     return new Promise((resolve, reject) => {
         db.serialize(() => {
             // Clear existing data
-            db.run("DELETE FROM products");
-            db.run("DELETE FROM orders");
-            db.run("DELETE FROM rollCosts");
-            db.run("DELETE FROM brands");
-            db.run("DELETE FROM styles");
-            db.run("DELETE FROM packagingOptions");
-            db.run("DELETE FROM multipliers");
-            db.run("DELETE FROM settings");
+            db.run("DELETE FROM products", (err) => { if (err) console.error('Error clearing products:', err); });
+            db.run("DELETE FROM orders", (err) => { if (err) console.error('Error clearing orders:', err); });
+            db.run("DELETE FROM rollCosts", (err) => { if (err) console.error('Error clearing rollCosts:', err); });
+            db.run("DELETE FROM tjSharePercentages", (err) => { if (err) console.error('Error clearing tjSharePercentages:', err); });
+            db.run("DELETE FROM brands", (err) => { if (err) console.error('Error clearing brands:', err); });
+            db.run("DELETE FROM styles", (err) => { if (err) console.error('Error clearing styles:', err); });
+            db.run("DELETE FROM packagingOptions", (err) => { if (err) console.error('Error clearing packagingOptions:', err); });
+            db.run("DELETE FROM multipliers", (err) => { if (err) console.error('Error clearing multipliers:', err); });
+            db.run("DELETE FROM settings", (err) => { if (err) console.error('Error clearing settings:', err); });
 
             // Insert products
             if (data.products && data.products.length > 0) {
@@ -505,30 +506,37 @@ const saveDataToDatabase = (data) => {
 
             // Insert orders
             if (data.orders && data.orders.length > 0) {
-                const insertOrder = db.prepare(`INSERT INTO orders 
-                    (id, orderNumber, product, count, etsyPayout, shippingCost, productionCost, tjShare, joshShare, status, createdOn, paidOn, source, payoutId, items)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+                try {
+                    const insertOrder = db.prepare(`INSERT INTO orders 
+                        (id, orderNumber, product, count, etsyPayout, shippingCost, productionCost, tjShare, joshShare, status, createdOn, paidOn, source, payoutId, items)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
-                data.orders.forEach(order => {
-                    insertOrder.run(
-                        order.id,
-                        order.orderNumber,
-                        order.product,
-                        order.count,
-                        order.etsyPayout,
-                        order.shippingCost,
-                        order.productionCost,
-                        order.tjShare,
-                        order.joshShare,
-                        order.status,
-                        order.createdOn,
-                        order.paidOn,
-                        order.source,
-                        order.payoutId,
-                        order.items ? JSON.stringify(order.items) : null
-                    );
-                });
-                insertOrder.finalize();
+                    data.orders.forEach(order => {
+                        insertOrder.run(
+                            order.id,
+                            order.orderNumber,
+                            order.product,
+                            order.count,
+                            order.etsyPayout,
+                            order.shippingCost,
+                            order.productionCost,
+                            order.tjShare,
+                            order.joshShare,
+                            order.status,
+                            order.createdOn,
+                            order.paidOn,
+                            order.source,
+                            order.payoutId,
+                            order.items ? JSON.stringify(order.items) : null
+                        );
+                    });
+                    insertOrder.finalize();
+                    console.log(`Orders saved successfully: ${data.orders.length} entries`);
+                } catch (error) {
+                    console.error('Error saving orders:', error);
+                    reject(error);
+                    return;
+                }
             }
 
             // Insert brands
@@ -562,9 +570,11 @@ const saveDataToDatabase = (data) => {
                         insertTjShare.run(tjShare.id, tjShare.value, tjShare.date);
                     });
                     insertTjShare.finalize();
-                    console.log('TJ share percentages saved successfully');
+                    console.log(`TJ share percentages saved successfully: ${data.tjSharePercentages.length} entries`);
                 } catch (error) {
                     console.error('Error saving TJ share percentages:', error);
+                    reject(error);
+                    return;
                 }
             }
 
@@ -949,23 +959,33 @@ app.get('/api/data', async (req, res) => {
 app.post('/api/data', async (req, res) => {
     try {
         const data = req.body;
-        console.log('Saving data to database and persistent storage...');
+        console.log('=== SAVING DATA ===');
+        console.log(`Orders count: ${data.orders ? data.orders.length : 0}`);
+        console.log(`TJ Share Percentages count: ${data.tjSharePercentages ? data.tjSharePercentages.length : 0}`);
+        console.log(`Database path: ${DB_PATH}`);
+        console.log(`Persistent storage path: ${process.env.PERSISTENT_STORAGE_PATH || 'not set'}`);
         
         // Save to database
+        console.log('Saving to database...');
         await saveDataToDatabase(data);
+        console.log('Database save completed');
         
         // Also save to a persistent file (will be in persistent storage if configured)
         const PERSISTENT_FILE_PATH = process.env.PERSISTENT_STORAGE_PATH ? 
             `${process.env.PERSISTENT_STORAGE_PATH}/persistent-data.json` : 
             'persistent-data.json';
+        
+        console.log(`Saving to persistent file: ${PERSISTENT_FILE_PATH}`);
         await fs.writeFile(PERSISTENT_FILE_PATH, JSON.stringify(data, null, 2));
         console.log(`Data saved to persistent file at: ${PERSISTENT_FILE_PATH}`);
         
-        console.log('Data saved successfully to database and persistent storage');
+        console.log('=== DATA SAVE COMPLETED SUCCESSFULLY ===');
         res.json({ success: true });
     } catch (error) {
-        console.error('Error saving data:', error);
-        res.status(500).json({ error: 'Failed to save data' });
+        console.error('=== ERROR SAVING DATA ===');
+        console.error('Error details:', error);
+        console.error('Stack trace:', error.stack);
+        res.status(500).json({ error: 'Failed to save data', details: error.message });
     }
 });
 
