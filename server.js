@@ -69,7 +69,13 @@ const initDatabase = () => {
                 id TEXT PRIMARY KEY,
                 value REAL,
                 date TEXT
-            )`);
+            )`, (err) => {
+                if (err) {
+                    console.error('Error creating tjSharePercentages table:', err);
+                } else {
+                    console.log('tjSharePercentages table created successfully');
+                }
+            });
 
             // Multipliers table
             db.run(`CREATE TABLE IF NOT EXISTS multipliers (
@@ -308,11 +314,16 @@ const populateDatabase = () => {
 
                 // Insert TJ share percentages
                 if (currentData.tjSharePercentages && currentData.tjSharePercentages.length > 0) {
-                    const insertTjShare = db.prepare("INSERT INTO tjSharePercentages (id, value, date) VALUES (?, ?, ?)");
-                    currentData.tjSharePercentages.forEach(tjShare => {
-                        insertTjShare.run(tjShare.id, tjShare.value, tjShare.date);
-                    });
-                    insertTjShare.finalize();
+                    try {
+                        const insertTjShare = db.prepare("INSERT INTO tjSharePercentages (id, value, date) VALUES (?, ?, ?)");
+                        currentData.tjSharePercentages.forEach(tjShare => {
+                            insertTjShare.run(tjShare.id, tjShare.value, tjShare.date);
+                        });
+                        insertTjShare.finalize();
+                        console.log('TJ share percentages inserted successfully');
+                    } catch (error) {
+                        console.error('Error inserting TJ share percentages:', error);
+                    }
                 }
 
                 // Insert multipliers
@@ -402,10 +413,11 @@ const getDataFromDatabase = () => {
                             // Get TJ share percentages
                             db.all("SELECT * FROM tjSharePercentages", (err, tjSharePercentages) => {
                                 if (err) {
-                                    reject(err);
-                                    return;
+                                    console.error('Error fetching TJ share percentages:', err);
+                                    data.tjSharePercentages = []; // Default to empty array if table doesn't exist
+                                } else {
+                                    data.tjSharePercentages = tjSharePercentages || [];
                                 }
-                                data.tjSharePercentages = tjSharePercentages;
 
                                 // Get multipliers
                             db.all("SELECT * FROM multipliers", (err, multipliers) => {
@@ -543,11 +555,16 @@ const saveDataToDatabase = (data) => {
 
             // Insert TJ share percentages
             if (data.tjSharePercentages && data.tjSharePercentages.length > 0) {
-                const insertTjShare = db.prepare("INSERT INTO tjSharePercentages (id, value, date) VALUES (?, ?, ?)");
-                data.tjSharePercentages.forEach(tjShare => {
-                    insertTjShare.run(tjShare.id, tjShare.value, tjShare.date);
-                });
-                insertTjShare.finalize();
+                try {
+                    const insertTjShare = db.prepare("INSERT INTO tjSharePercentages (id, value, date) VALUES (?, ?, ?)");
+                    data.tjSharePercentages.forEach(tjShare => {
+                        insertTjShare.run(tjShare.id, tjShare.value, tjShare.date);
+                    });
+                    insertTjShare.finalize();
+                    console.log('TJ share percentages saved successfully');
+                } catch (error) {
+                    console.error('Error saving TJ share percentages:', error);
+                }
             }
 
             // Insert multipliers
