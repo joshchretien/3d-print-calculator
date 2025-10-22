@@ -64,6 +64,13 @@ const initDatabase = () => {
                 date TEXT
             )`);
 
+            // TJ Share Percentages table
+            db.run(`CREATE TABLE IF NOT EXISTS tjSharePercentages (
+                id TEXT PRIMARY KEY,
+                value REAL,
+                date TEXT
+            )`);
+
             // Multipliers table
             db.run(`CREATE TABLE IF NOT EXISTS multipliers (
                 id TEXT PRIMARY KEY,
@@ -299,6 +306,15 @@ const populateDatabase = () => {
                 });
                 insertRollCost.finalize();
 
+                // Insert TJ share percentages
+                if (currentData.tjSharePercentages && currentData.tjSharePercentages.length > 0) {
+                    const insertTjShare = db.prepare("INSERT INTO tjSharePercentages (id, value, date) VALUES (?, ?, ?)");
+                    currentData.tjSharePercentages.forEach(tjShare => {
+                        insertTjShare.run(tjShare.id, tjShare.value, tjShare.date);
+                    });
+                    insertTjShare.finalize();
+                }
+
                 // Insert multipliers
                 const insertMultiplier = db.prepare("INSERT INTO multipliers (id, preset, count, multiplier) VALUES (?, ?, ?, ?)");
                 Object.entries(currentData.multipliers).forEach(([preset, counts]) => {
@@ -330,6 +346,7 @@ const getDataFromDatabase = () => {
             products: [],
             orders: [],
             rollCosts: [],
+            tjSharePercentages: [],
             brands: [],
             styles: [],
             packagingOptions: [],
@@ -382,7 +399,15 @@ const getDataFromDatabase = () => {
                             }
                             data.rollCosts = rollCosts;
 
-                            // Get multipliers
+                            // Get TJ share percentages
+                            db.all("SELECT * FROM tjSharePercentages", (err, tjSharePercentages) => {
+                                if (err) {
+                                    reject(err);
+                                    return;
+                                }
+                                data.tjSharePercentages = tjSharePercentages;
+
+                                // Get multipliers
                             db.all("SELECT * FROM multipliers", (err, multipliers) => {
                                 if (err) {
                                     reject(err);
@@ -514,6 +539,15 @@ const saveDataToDatabase = (data) => {
                     insertRollCost.run(rollCost.id, rollCost.value, rollCost.date);
                 });
                 insertRollCost.finalize();
+            }
+
+            // Insert TJ share percentages
+            if (data.tjSharePercentages && data.tjSharePercentages.length > 0) {
+                const insertTjShare = db.prepare("INSERT INTO tjSharePercentages (id, value, date) VALUES (?, ?, ?)");
+                data.tjSharePercentages.forEach(tjShare => {
+                    insertTjShare.run(tjShare.id, tjShare.value, tjShare.date);
+                });
+                insertTjShare.finalize();
             }
 
             // Insert multipliers
@@ -679,6 +713,7 @@ const DEFAULT_DATA = {
     ],
     orders: [],
     rollCosts: [],
+    tjSharePercentages: [{ id: "default-tj-share", value: 70, date: "2025-01-01" }],
     multipliers: {
         "1|5|30|60|90|120": { 1: 6.5, 5: 3.5, 30: 2, 60: 1.8, 90: 1.6, 120: 1.5 },
         "Prism": { 12: 15, 36: 19.5, 54: 11.5, 72: 10.75 },
@@ -714,6 +749,7 @@ const FALLBACK_DATA = {
     ],
     orders: [],
     rollCosts: [],
+    tjSharePercentages: [{ id: "default-tj-share", value: 70, date: "2025-01-01" }],
     multipliers: {
         "1|5|30|60|90|120": { 1: 6.5, 5: 3.5, 30: 2, 60: 1.8, 90: 1.6, 120: 1.5 },
         "Prism": { 12: 15, 36: 19.5, 54: 11.5, 72: 10.75 },

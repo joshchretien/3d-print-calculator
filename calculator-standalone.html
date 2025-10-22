@@ -211,11 +211,13 @@
             UPDATE_PRODUCT: "UPDATE_PRODUCT",
             SET_LIST: "SET_LIST",
             ADD_ROLL_COST: "ADD_ROLL_COST",
+            ADD_TJ_SHARE_PERCENTAGE: "ADD_TJ_SHARE_PERCENTAGE",
             SET_VALUE: "SET_VALUE",
             ADD_ORDER: "ADD_ORDER",
             UPDATE_ORDER: "UPDATE_ORDER",
             DELETE_ORDER: "DELETE_ORDER",
             BULK_MARK_PAID: "BULK_MARK_PAID",
+            UNMARK_ORDER_PAID: "UNMARK_ORDER_PAID",
             INITIALIZE: "INITIALIZE"
         };
 
@@ -224,6 +226,7 @@
             brands: [...CONSTANTS.DEFAULT_BRANDS],
             styles: [...CONSTANTS.DEFAULT_STYLES],
             rollCosts: [{ id: utils.uid(), value: CONSTANTS.DEFAULT_ROLL_COST, date: utils.today() }],
+            tjSharePercentages: [{ id: utils.uid(), value: CONSTANTS.TJ_SHARE_PERCENTAGE * 100, date: utils.today() }],
             multipliers: { ...DEFAULT_MULTIPLIERS },
             orders: [],
             packagingOptions: [...CONSTANTS.PACKAGING_OPTIONS]
@@ -241,6 +244,8 @@
                     return { ...state, [action.key]: action.list };
                 case ACTIONS.ADD_ROLL_COST:
                     return { ...state, rollCosts: [...state.rollCosts, action.rollCost] };
+                case ACTIONS.ADD_TJ_SHARE_PERCENTAGE:
+                    return { ...state, tjSharePercentages: [...state.tjSharePercentages, action.tjShare] };
                 case ACTIONS.SET_VALUE:
                     return { ...state, [action.key]: action.value };
                 case ACTIONS.ADD_ORDER:
@@ -251,6 +256,8 @@
                     return { ...state, orders: state.orders.filter((o) => o.id !== action.id) };
                 case ACTIONS.BULK_MARK_PAID:
                     return { ...state, orders: state.orders.map((o) => action.ids.includes(o.id) ? { ...o, status: "Paid", paidOn: action.paidOn || utils.now(), payoutId: action.payoutId } : o) };
+                case ACTIONS.UNMARK_ORDER_PAID:
+                    return { ...state, orders: state.orders.map((o) => o.id === action.id ? { ...o, status: "Unpaid", paidOn: null, payoutId: null } : o) };
                 case ACTIONS.INITIALIZE:
                     return { ...state, ...action.payload };
                 default:
@@ -262,6 +269,7 @@
             const state = { ...defaultState, ...(raw || {}) };
             if (!Array.isArray(state.products)) state.products = [];
             if (!Array.isArray(state.rollCosts)) state.rollCosts = [...defaultState.rollCosts];
+            if (!Array.isArray(state.tjSharePercentages)) state.tjSharePercentages = [...defaultState.tjSharePercentages];
             if (!Array.isArray(state.orders)) state.orders = [];
             if (!Array.isArray(state.brands) || !state.brands.length) {
                 state.brands = [...CONSTANTS.DEFAULT_BRANDS];
@@ -1162,9 +1170,14 @@
                     joshShare = profit + totalProductionCost;
                     tjShare = 0;
                 } else {
-                    // Default TJ logic: TJ gets 70% of profit PLUS production cost
-                    const tjProfitShare = profit * CONSTANTS.TJ_SHARE_PERCENTAGE;
-                    const joshProfitShare = profit * (1 - CONSTANTS.TJ_SHARE_PERCENTAGE);
+                    // Get the latest TJ share percentage from history
+                    const latestTjShare = state.tjSharePercentages && state.tjSharePercentages.length > 0 
+                        ? state.tjSharePercentages[state.tjSharePercentages.length - 1].value / 100
+                        : CONSTANTS.TJ_SHARE_PERCENTAGE;
+                    
+                    // Default TJ logic: TJ gets X% of profit PLUS production cost
+                    const tjProfitShare = profit * latestTjShare;
+                    const joshProfitShare = profit * (1 - latestTjShare);
                     tjShare = tjProfitShare + totalProductionCost;
                     joshShare = joshProfitShare;
                 }
@@ -2259,6 +2272,16 @@
                                                                                         Edit
                                                                                     </button>
                                                                                     <button 
+                                                                                        onClick={() => {
+                                                                                            if (confirm(`Are you sure you want to unmark order ${order.orderNumber} as paid?`)) {
+                                                                                                dispatch({ type: ACTIONS.UNMARK_ORDER_PAID, id: order.id });
+                                                                                            }
+                                                                                        }}
+                                                                                        className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs transition-colors duration-200"
+                                                                                    >
+                                                                                        Unmark Paid
+                                                                                    </button>
+                                                                                    <button 
                                                                                         onClick={() => deleteOrder(order.id)}
                                                                                         className="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs transition-colors duration-200"
                                                                                     >
@@ -2291,6 +2314,7 @@
             const [styles, setStyles] = useState(state.styles.join("\n"));
             const [packagingOptions, setPackagingOptions] = useState(state.packagingOptions.join("\n"));
             const [multipliers, setMultipliers] = useState(JSON.stringify(state.multipliers, null, 2));
+            const [tjSharePercentage, setTjSharePercentage] = useState("");
 
             // Sync local multipliers state with global state
             useEffect(() => {
@@ -2348,6 +2372,17 @@
                 }
             }, [multipliers, dispatch]);
 
+            const addTjSharePercentage = useCallback(() => {
+                const value = utils.validateNumber(tjSharePercentage);
+                if (value < 0 || value > 100) {
+                    alert("Please enter a valid percentage between 0 and 100");
+                    return;
+                }
+                const tjShare = { id: utils.uid(), value, date: utils.today() };
+                dispatch({ type: ACTIONS.ADD_TJ_SHARE_PERCENTAGE, tjShare });
+                setTjSharePercentage("");
+            }, [tjSharePercentage, dispatch]);
+
             return (
                 <div>
                     <h2 className="text-2xl font-bold mb-6 text-gray-800">Manage Settings</h2>
@@ -2370,6 +2405,31 @@
                                     <div key={cost.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
                                         <span>{cost.date}</span>
                                         <span className="font-medium">{utils.money(cost.value)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                            <h3 className="text-lg font-semibold mb-4 text-gray-800">TJ Share Percentage</h3>
+                            <div className="mb-4">
+                                <input
+                                    type="number"
+                                    value={tjSharePercentage}
+                                    onChange={(e) => setTjSharePercentage(e.target.value)}
+                                    placeholder="Enter TJ share percentage (0-100)"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    min="0"
+                                    max="100"
+                                    step="0.1"
+                                />
+                                <button onClick={addTjSharePercentage} className="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors duration-200">Add TJ Share %</button>
+                            </div>
+                            <div className="space-y-2">
+                                {state.tjSharePercentages && state.tjSharePercentages.map((tjShare) => (
+                                    <div key={tjShare.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                                        <span>{tjShare.date}</span>
+                                        <span className="font-medium">{tjShare.value}%</span>
                                     </div>
                                 ))}
                             </div>

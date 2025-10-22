@@ -10,6 +10,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - TBD
 
+## [1.6.7] - 2025-01-27
+
+### Added
+- **TJ Share Percentage Management**: Added adjustable TJ share percentage field in Manage tab
+- **TJ Share History Tracking**: TJ share percentages are tracked with date history like roll costs
+- **Unmark Orders as Paid**: Added ability to unmark orders as paid in the Payouts section
+- **Dynamic TJ Share Calculation**: Orders now use the latest TJ share percentage from history for calculations
+
+### Technical Changes
+- Added `tjSharePercentages` array to state management
+- Added `ADD_TJ_SHARE_PERCENTAGE` and `UNMARK_ORDER_PAID` actions
+- Added `tjSharePercentages` table to SQLite database schema
+- Updated order calculation logic to use latest TJ share percentage from history
+- Added "Unmark Paid" button to payouts section with confirmation dialog
+
+### Database Changes
+- Added `tjSharePercentages` table with id, value, and date columns
+- Updated database migration to include default TJ share percentage (70%)
+- Enhanced data persistence for TJ share percentage history
+
+## [1.6.6] - 2025-01-27
+
+### Added
+- **eBay Source Option**: Added eBay as third source option alongside Etsy and Website
+- **eBay Color Coding**: Complete green color scheme for eBay orders throughout UI
+- **eBay Integration**: eBay orders display with green backgrounds and badges
+
+### Technical Changes
+- Added eBay option to Source dropdown in Add Order section
+- Added eBay option to Edit Order modal Source dropdown
+- Implemented green color coding for eBay orders (green-50/green-100 backgrounds)
+- Added green source badges for eBay orders (green-100/green-800)
+- Updated Add Order section background colors for eBay (green-50/green-200)
+- Applied green color scheme to scanning instructions for eBay orders
+- Extended color coding to Payouts section for eBay orders
+
 ## [1.6.5] - 2025-01-09
 
 ### Fixed
