@@ -153,8 +153,16 @@
                 const value = Number(n || 0);
                 return `$${value.toFixed(2)}`;
             },
-            today: () => new Date().toISOString().slice(0, 10),
-            now: () => new Date().toISOString(),
+            today: () => {
+                const now = new Date();
+                const est = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+                return est.toISOString().slice(0, 10);
+            },
+            now: () => {
+                const now = new Date();
+                const est = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+                return est.toISOString();
+            },
             pad2: (n) => String(n).padStart(2, "0"),
             estTime: (count) => {
                 const minutes = count * CONSTANTS.ESTIMATED_TIME_PER_UNIT;
@@ -218,6 +226,7 @@
             DELETE_ORDER: "DELETE_ORDER",
             BULK_MARK_PAID: "BULK_MARK_PAID",
             UNMARK_ORDER_PAID: "UNMARK_ORDER_PAID",
+            UNMARK_ORDERS_PAID: "UNMARK_ORDERS_PAID",
             INITIALIZE: "INITIALIZE"
         };
 
@@ -258,6 +267,8 @@
                     return { ...state, orders: state.orders.map((o) => action.ids.includes(o.id) ? { ...o, status: "Paid", paidOn: action.paidOn || utils.now(), payoutId: action.payoutId } : o) };
                 case ACTIONS.UNMARK_ORDER_PAID:
                     return { ...state, orders: state.orders.map((o) => o.id === action.id ? { ...o, status: "Unpaid", paidOn: null, payoutId: null } : o) };
+                case ACTIONS.UNMARK_ORDERS_PAID:
+                    return { ...state, orders: state.orders.map((o) => action.ids.includes(o.id) ? { ...o, status: "Unpaid", paidOn: null, payoutId: null } : o) };
                 case ACTIONS.INITIALIZE:
                     return { ...state, ...action.payload };
                 default:
@@ -983,6 +994,7 @@
 
         const OrdersTab = ({ state, dispatch }) => {
             const [selectedOrderIds, setSelectedOrderIds] = useState(new Set());
+            const [selectedPayoutOrderIds, setSelectedPayoutOrderIds] = useState(new Set());
             const [maker, setMaker] = useState("TJ");
             const [source, setSource] = useState("Etsy");
             const [orderNumber, setOrderNumber] = useState("");
@@ -1019,6 +1031,30 @@
                     return newSet;
                 });
             }, []);
+
+            const togglePayoutOrderSelection = useCallback((orderId) => {
+                setSelectedPayoutOrderIds(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(orderId)) {
+                        newSet.delete(orderId);
+                    } else {
+                        newSet.add(orderId);
+                    }
+                    return newSet;
+                });
+            }, []);
+
+            const bulkUnmarkPaid = useCallback(() => {
+                const selectedIds = Array.from(selectedPayoutOrderIds);
+                if (selectedIds.length === 0) {
+                    alert("Please select orders to unmark as paid");
+                    return;
+                }
+                if (confirm(`Are you sure you want to unmark ${selectedIds.length} orders as paid?`)) {
+                    dispatch({ type: ACTIONS.UNMARK_ORDERS_PAID, ids: selectedIds });
+                    setSelectedPayoutOrderIds(new Set());
+                }
+            }, [selectedPayoutOrderIds, dispatch]);
 
             const addOrderItem = useCallback(() => {
                 setOrderItems(prev => [...prev, { id: utils.uid(), product: "", count: "", quantity: 1 }]);
@@ -2202,10 +2238,42 @@
                                         
                                         {expandedPayouts.has(payoutKey) && (
                                             <div className="border-t border-gray-200">
+                                                <div className="bg-white p-4 border-b border-gray-200">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-sm font-medium text-gray-700">
+                                                            Select orders to unmark as paid
+                                                        </span>
+                                                        <button
+                                                            onClick={bulkUnmarkPaid}
+                                                            disabled={selectedPayoutOrderIds.size === 0}
+                                                            className="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded text-sm transition-colors duration-200"
+                                                        >
+                                                            Unmark Paid ({selectedPayoutOrderIds.size})
+                                                        </button>
+                                                    </div>
+                                                </div>
                                                 <div className="overflow-x-auto">
                                                     <table className="w-full text-sm">
                                                         <thead className="bg-gray-50">
                                                             <tr>
+                                                                <th className="p-3 text-left font-medium">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={payout.orders.every(order => selectedPayoutOrderIds.has(order.id))}
+                                                                        onChange={(e) => {
+                                                                            if (e.target.checked) {
+                                                                                payout.orders.forEach(order => setSelectedPayoutOrderIds(prev => new Set([...prev, order.id])));
+                                                                            } else {
+                                                                                payout.orders.forEach(order => setSelectedPayoutOrderIds(prev => {
+                                                                                    const newSet = new Set(prev);
+                                                                                    newSet.delete(order.id);
+                                                                                    return newSet;
+                                                                                }));
+                                                                            }
+                                                                        }}
+                                                                        className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+                                                                    />
+                                                                </th>
                                                                 <th className="p-3 text-left font-medium">Source</th>
                                                                 <th className="p-3 text-left font-medium">Order #</th>
                                                                 <th className="p-3 text-left font-medium">Product</th>
@@ -2229,6 +2297,16 @@
                                                                         order.source === 'eBay' ? 'bg-green-50 hover:bg-green-100' :
                                                                         'hover:bg-gray-50'
                                                                     }`}>
+                                                                        <td className="p-3 text-center">
+                                                                            {itemIndex === 0 && (
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={selectedPayoutOrderIds.has(order.id)}
+                                                                                    onChange={() => togglePayoutOrderSelection(order.id)}
+                                                                                    className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+                                                                                />
+                                                                            )}
+                                                                        </td>
                                                                         <td className="p-3 font-medium">
                                                                             {itemIndex === 0 && (
                                                                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -2270,16 +2348,6 @@
                                                                                         className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs transition-colors duration-200"
                                                                                     >
                                                                                         Edit
-                                                                                    </button>
-                                                                                    <button 
-                                                                                        onClick={() => {
-                                                                                            if (confirm(`Are you sure you want to unmark order ${order.orderNumber} as paid?`)) {
-                                                                                                dispatch({ type: ACTIONS.UNMARK_ORDER_PAID, id: order.id });
-                                                                                            }
-                                                                                        }}
-                                                                                        className="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-xs transition-colors duration-200"
-                                                                                    >
-                                                                                        Unmark Paid
                                                                                     </button>
                                                                                     <button 
                                                                                         onClick={() => deleteOrder(order.id)}

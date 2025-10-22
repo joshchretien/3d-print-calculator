@@ -10,6 +10,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - TBD
 
+## [1.6.8] - 2025-01-27
+
+### Added
+- **Bulk Unmark Paid Orders**: Added bulk selection functionality for unmarking paid orders in Payouts section
+- **Checkbox Selection**: Added checkboxes to each order row in expanded payout sections
+- **Master Checkbox**: Added master checkbox in table header to select/deselect all orders
+- **Bulk Unmark Button**: Added "Unmark Paid" button in dropdown header with order count
+- **EST Timezone Support**: Fixed date/time functions to use Eastern Time (EST) instead of UTC
+
+### Technical Changes
+- Added `selectedPayoutOrderIds` state for tracking selected orders in payouts
+- Added `togglePayoutOrderSelection` function for individual order selection
+- Added `bulkUnmarkPaid` function for bulk unmarking orders
+- Added `UNMARK_ORDERS_PAID` action for bulk operations
+- Updated timezone handling in `utils.today()` and `utils.now()` functions
+
+### UI Improvements
+- Removed individual "Unmark Paid" buttons from order rows
+- Added bulk selection header with "Unmark Paid" button
+- Added master checkbox for selecting all orders in a payout
+- Enhanced user experience with bulk operations
+- Fixed date accuracy to show correct EST dates
+
 ## [1.6.7] - 2025-01-27
 
 ### Added
