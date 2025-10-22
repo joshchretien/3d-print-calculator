@@ -10,6 +10,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - TBD
 
+## [1.6.9] - 2025-01-27
+
+### Added
+- **Bulk Edit TJ Share Percentage**: Added "Edit Split" button for bulk editing TJ share percentages on selected orders
+- **Edit Split Dropdown**: Added dropdown populated with historical TJ Share Percentages from Manage tab
+- **Historical TJ Share Entry**: Added 2024-12-01 entry with 70% to TJ Share Percentage history
+- **Bulk Split Application**: Added functionality to apply selected TJ share percentage to multiple orders at once
+
+### Technical Changes
+- Added `EDIT_SPLIT` action for bulk editing TJ share percentages
+- Added `editSplit` function for applying TJ share percentage changes to selected orders
+- Added `showEditSplit` and `selectedTjSharePercentage` state management
+- Enhanced TJ share percentage calculation logic for bulk updates
+- Added historical TJ share percentage entry to DEFAULT_DATA
+
+### UI Improvements
+- Added "Edit Split" button (greyed out unless orders are selected)
+- Added purple-themed Edit Split dropdown with TJ share percentage options
+- Added "Apply Split" and "Cancel" buttons in Edit Split section
+- Enhanced user experience with bulk split editing capabilities
+
 ## [1.6.8] - 2025-01-27
 
 ### Added

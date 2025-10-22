@@ -731,7 +731,10 @@ const DEFAULT_DATA = {
     ],
     orders: [],
     rollCosts: [],
-    tjSharePercentages: [{ id: "default-tj-share", value: 70, date: "2025-01-01" }],
+    tjSharePercentages: [
+        { id: "historical-tj-share-2024-12-01", value: 70, date: "2024-12-01" },
+        { id: "default-tj-share", value: 70, date: "2025-01-01" }
+    ],
     multipliers: {
         "1|5|30|60|90|120": { 1: 6.5, 5: 3.5, 30: 2, 60: 1.8, 90: 1.6, 120: 1.5 },
         "Prism": { 12: 15, 36: 19.5, 54: 11.5, 72: 10.75 },
@@ -767,7 +770,10 @@ const FALLBACK_DATA = {
     ],
     orders: [],
     rollCosts: [],
-    tjSharePercentages: [{ id: "default-tj-share", value: 70, date: "2025-01-01" }],
+    tjSharePercentages: [
+        { id: "historical-tj-share-2024-12-01", value: 70, date: "2024-12-01" },
+        { id: "default-tj-share", value: 70, date: "2025-01-01" }
+    ],
     multipliers: {
         "1|5|30|60|90|120": { 1: 6.5, 5: 3.5, 30: 2, 60: 1.8, 90: 1.6, 120: 1.5 },
         "Prism": { 12: 15, 36: 19.5, 54: 11.5, 72: 10.75 },

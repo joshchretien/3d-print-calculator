@@ -227,6 +227,7 @@
             BULK_MARK_PAID: "BULK_MARK_PAID",
             UNMARK_ORDER_PAID: "UNMARK_ORDER_PAID",
             UNMARK_ORDERS_PAID: "UNMARK_ORDERS_PAID",
+            EDIT_SPLIT: "EDIT_SPLIT",
             INITIALIZE: "INITIALIZE"
         };
 
@@ -269,6 +270,18 @@
                     return { ...state, orders: state.orders.map((o) => o.id === action.id ? { ...o, status: "Unpaid", paidOn: null, payoutId: null } : o) };
                 case ACTIONS.UNMARK_ORDERS_PAID:
                     return { ...state, orders: state.orders.map((o) => action.ids.includes(o.id) ? { ...o, status: "Unpaid", paidOn: null, payoutId: null } : o) };
+                case ACTIONS.EDIT_SPLIT:
+                    return { ...state, orders: state.orders.map((o) => {
+                        if (action.ids.includes(o.id)) {
+                            const profit = o.etsyPayout - o.shippingCost - o.productionCost;
+                            const tjProfitShare = profit * (action.tjSharePercentage / 100);
+                            const joshProfitShare = profit * (1 - action.tjSharePercentage / 100);
+                            const tjShare = tjProfitShare + o.productionCost;
+                            const joshShare = joshProfitShare;
+                            return { ...o, tjShare, joshShare };
+                        }
+                        return o;
+                    }) };
                 case ACTIONS.INITIALIZE:
                     return { ...state, ...action.payload };
                 default:
@@ -995,6 +1008,8 @@
         const OrdersTab = ({ state, dispatch }) => {
             const [selectedOrderIds, setSelectedOrderIds] = useState(new Set());
             const [selectedPayoutOrderIds, setSelectedPayoutOrderIds] = useState(new Set());
+            const [showEditSplit, setShowEditSplit] = useState(false);
+            const [selectedTjSharePercentage, setSelectedTjSharePercentage] = useState("");
             const [maker, setMaker] = useState("TJ");
             const [source, setSource] = useState("Etsy");
             const [orderNumber, setOrderNumber] = useState("");
@@ -1055,6 +1070,24 @@
                     setSelectedPayoutOrderIds(new Set());
                 }
             }, [selectedPayoutOrderIds, dispatch]);
+
+            const editSplit = useCallback(() => {
+                const selectedIds = Array.from(selectedOrderIds);
+                if (selectedIds.length === 0) {
+                    alert("Please select orders to edit split");
+                    return;
+                }
+                if (!selectedTjSharePercentage) {
+                    alert("Please select a TJ share percentage");
+                    return;
+                }
+                if (confirm(`Are you sure you want to update the TJ share percentage to ${selectedTjSharePercentage}% for ${selectedIds.length} orders?`)) {
+                    dispatch({ type: ACTIONS.EDIT_SPLIT, ids: selectedIds, tjSharePercentage: parseFloat(selectedTjSharePercentage) });
+                    setShowEditSplit(false);
+                    setSelectedTjSharePercentage("");
+                    setSelectedOrderIds(new Set());
+                }
+            }, [selectedOrderIds, selectedTjSharePercentage, dispatch]);
 
             const addOrderItem = useCallback(() => {
                 setOrderItems(prev => [...prev, { id: utils.uid(), product: "", count: "", quantity: 1 }]);
@@ -2029,6 +2062,17 @@
                             </div>
                             <div className="flex gap-2">
                                 <button 
+                                    onClick={() => setShowEditSplit(!showEditSplit)}
+                                    className={`px-4 py-2 rounded-lg text-sm transition-colors duration-200 ${
+                                        selectedOrderIds.size > 0 
+                                            ? 'bg-purple-600 hover:bg-purple-700 text-white' 
+                                            : 'bg-gray-400 text-white cursor-not-allowed'
+                                    }`}
+                                    disabled={selectedOrderIds.size === 0}
+                                >
+                                    Edit Split
+                                </button>
+                                <button 
                                     onClick={() => {
                                         const unpaidOrders = orders.filter(o => o.status === 'Unpaid');
                                         setSelectedOrderIds(new Set(unpaidOrders.map(o => o.id)));
@@ -2050,6 +2094,46 @@
                                 </button>
                             </div>
                         </div>
+
+                        {/* Edit Split Dropdown */}
+                        {showEditSplit && selectedOrderIds.size > 0 && (
+                            <div className="mb-4 bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-sm font-medium text-purple-800">
+                                        Edit TJ Share Percentage for {selectedOrderIds.size} selected orders:
+                                    </span>
+                                    <select
+                                        value={selectedTjSharePercentage}
+                                        onChange={(e) => setSelectedTjSharePercentage(e.target.value)}
+                                        className="px-3 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                    >
+                                        <option value="">Select TJ Share %</option>
+                                        {state.tjSharePercentages && state.tjSharePercentages
+                                            .sort((a, b) => new Date(b.date) - new Date(a.date))
+                                            .map((tjShare) => (
+                                                <option key={tjShare.id} value={tjShare.value}>
+                                                    {tjShare.date} - {tjShare.value}%
+                                                </option>
+                                            ))}
+                                    </select>
+                                    <button
+                                        onClick={editSplit}
+                                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200"
+                                    >
+                                        Apply Split
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setShowEditSplit(false);
+                                            setSelectedTjSharePercentage("");
+                                        }}
+                                        className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
                         {orders.length === 0 ? (
                             <div className="text-center py-12 bg-white rounded-xl shadow-lg border border-gray-200">
