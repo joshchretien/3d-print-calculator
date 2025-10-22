@@ -420,39 +420,40 @@ const getDataFromDatabase = () => {
                                 }
 
                                 // Get multipliers
-                            db.all("SELECT * FROM multipliers", (err, multipliers) => {
-                                if (err) {
-                                    reject(err);
-                                    return;
-                                }
-                                
-                                multipliers.forEach(mult => {
-                                    if (!data.multipliers[mult.preset]) {
-                                        data.multipliers[mult.preset] = {};
-                                    }
-                                    data.multipliers[mult.preset][mult.count] = mult.multiplier;
-                                });
-
-                                // Get orders
-                                db.all("SELECT * FROM orders", (err, orders) => {
+                                db.all("SELECT * FROM multipliers", (err, multipliers) => {
                                     if (err) {
                                         reject(err);
                                         return;
                                     }
                                     
-                                    data.orders = orders.map(order => ({
-                                        ...order,
-                                        items: order.items ? JSON.parse(order.items) : undefined
-                                    }));
+                                    multipliers.forEach(mult => {
+                                        if (!data.multipliers[mult.preset]) {
+                                            data.multipliers[mult.preset] = {};
+                                        }
+                                        data.multipliers[mult.preset][mult.count] = mult.multiplier;
+                                    });
 
-                                    // Get global discount
-                                    db.get("SELECT value FROM settings WHERE key = 'globalDiscount'", (err, setting) => {
+                                    // Get orders
+                                    db.all("SELECT * FROM orders", (err, orders) => {
                                         if (err) {
                                             reject(err);
                                             return;
                                         }
-                                        data.globalDiscount = setting ? parseInt(setting.value) : 25;
-                                        resolve(data);
+                                        
+                                        data.orders = orders.map(order => ({
+                                            ...order,
+                                            items: order.items ? JSON.parse(order.items) : undefined
+                                        }));
+
+                                        // Get global discount
+                                        db.get("SELECT value FROM settings WHERE key = 'globalDiscount'", (err, setting) => {
+                                            if (err) {
+                                                reject(err);
+                                                return;
+                                            }
+                                            data.globalDiscount = setting ? parseInt(setting.value) : 25;
+                                            resolve(data);
+                                        });
                                     });
                                 });
                             });
