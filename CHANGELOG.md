@@ -10,6 +10,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - TBD
 
+## [1.7.0] - 2025-01-27
+
+### Fixed
+- **CRITICAL: Database Persistence Bug**
+  - Fixed issue where new orders were not being saved to the database
+  - Problem: `resolve()` was being called before SQLite prepared statements finished
+  - With `db.serialize()`, operations are queued but `finalize()` callbacks are async
+  - The promise resolved prematurely, causing HTTP response to send before data was written
+  - Solution: Implemented completion counter pattern to track all database operations
+  - Only resolves the promise when ALL operations (DELETE and INSERT) complete successfully
+  - This ensures data is fully persisted before the API responds to the frontend
+
+### Technical Changes
+- Completely refactored `saveDataToDatabase()` function in server.js
+- Added `operationsCount` and `completedOperations` tracking
+- Added `checkComplete()` helper function for operation completion
+- Added `handleError()` helper function for centralized error handling
+- All DELETE operations now have callbacks to track completion
+- All INSERT operations use prepared statements with proper `finalize()` callbacks
+- Resolves only when `completedOperations === operationsCount`
+
 ## [1.6.9] - 2025-01-27
 
 ### Added
