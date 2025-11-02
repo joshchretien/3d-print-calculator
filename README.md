@@ -65,18 +65,21 @@ A comprehensive business management system designed specifically for 3D printing
 
 ### Backend
 - **Node.js 18.x**: Server-side JavaScript runtime
-- **Express.js**: Web application framework
+- **Express.js**: Web application framework with 10MB body parser limit
+- **SQLite3**: Persistent database storage with Kinsta persistent volumes
 - **CORS**: Cross-origin resource sharing
-- **File System API**: JSON-based data persistence
 - **ShipStation API**: Shipping cost integration and order lookup
 - **WooCommerce API**: Order data, payout calculation, and line item processing
 - **Smart Data Processing**: Intelligent product matching and count extraction
+- **Async Operation Handling**: Proper SQLite prepared statement completion tracking
 
 ### Deployment
 - **Kinsta**: Professional hosting platform
+- **Persistent Storage**: SQLite database mounted at `/var/lib/data`
 - **GitHub**: Version control and CI/CD
 - **Custom Domain**: dashboard.deliciosadecor.com
 - **SSL/TLS**: Automatic HTTPS encryption
+- **Auto-Deploy**: Automatic deployment on GitHub push
 
 ## 📁 Project Structure
 
@@ -166,6 +169,43 @@ PORT=3000
 - **Business Analytics**: Revenue and profit analysis
 
 ## 🔄 Version History
+
+### v1.7.1 - Critical Database Persistence Fixes (January 2025)
+- ✅ **HTTP 413 Payload Too Large Fix**: Increased Express body parser limit to 10MB
+- ✅ **Database Async Completion**: Fixed SQLite prepared statement completion tracking
+- ✅ **Proper State Persistence**: Ensures all database writes complete before API response
+- ✅ **Kinsta Persistent Storage**: Database stored at `/var/lib/data` mount point
+- ✅ **Production Stability**: Resolved data loss issues on refresh
+
+### v1.6.9 - Bulk Operations & TJ Share Management (January 2025)
+- ✅ **Bulk Edit TJ Share**: Apply TJ share percentage to multiple orders at once
+- ✅ **Historical TJ Share Tracking**: Track changes in TJ share over time
+- ✅ **Bulk Unmark Paid**: Unmark multiple orders as paid simultaneously
+- ✅ **EST Timezone Support**: All dates/times use Eastern Standard Time
+
+### v1.6.8 - Unmark Paid & Timezone Fixes (January 2025)
+- ✅ **Bulk Unmark Paid Orders**: Select multiple orders to unmark as paid
+- ✅ **Master Checkbox**: Select all orders in a payout group
+- ✅ **EST Timezone**: Fixed date accuracy to use America/New_York timezone
+
+### v1.6.7 - TJ Share Percentage Management (January 2025)
+- ✅ **TJ Share Tracking**: Historical TJ share percentage tracking with dates
+- ✅ **Unmark Orders as Paid**: Ability to unmark individual orders
+- ✅ **Dynamic Split Calculation**: Uses latest TJ share from history for new orders
+- ✅ **TJ Share UI**: Manage TJ share percentages in Manage tab
+
+### v1.6.6 - eBay Source Support (January 2025)
+- ✅ **eBay Source**: Added eBay as third source option (Etsy, Website, eBay)
+- ✅ **Green Color Coding**: Complete eBay theme throughout application
+- ✅ **Source Dropdown**: Updated order source selection UI
+
+### v1.5.9-v1.6.5 - Multiplier & Calculation Fixes (January 2025)
+- ✅ **Multiplier Reactivity**: Changes in Manage tab update product calculations immediately
+- ✅ **Calculation Precision**: Fixed rounding errors in "My Cost" and "Total" calculations
+- ✅ **Preset Management**: Renamed "Eufy S4" to "adv-5|72|108|144" and added new preset
+- ✅ **New Presets**: Added "5|72|108|144" with multipliers 5:30, 72:20, 108:18, 144:16
+- ✅ **1 Count Support**: Added 1 count with multiplier 50 to both new presets
+- ✅ **Cost Display**: Fixed "Cost per gram" to show $0.015 instead of $0.01
 
 ### v1.3.1 - Complete Automation & Smart Product Matching (January 2025)
 - ✅ **Smart Product Matching**: Automatic product detection from WooCommerce line items
