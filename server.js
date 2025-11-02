@@ -721,8 +721,9 @@ app.use(session({
 }));
 
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Increase body size limit to handle large state objects (10MB should be plenty)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Cache-busting middleware to prevent browser caching
 app.use((req, res, next) => {

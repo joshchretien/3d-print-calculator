@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - TBD
 
+## [1.7.1] - 2025-01-27
+
+### Fixed
+- **HTTP 413 Payload Too Large Error**
+  - Fixed 413 error when saving large datasets to server
+  - Problem: Express body parser had default 100KB limit, which was too small for large state objects
+  - Solution: Increased body size limit to 10MB for both JSON and URL-encoded data
+  - This allows the application to save complete state including all orders, products, and data
+
+### Technical Changes
+- Updated `express.json({ limit: '10mb' })` in server.js
+- Updated `express.urlencoded({ extended: true, limit: '10mb' })` in server.js
+- Increased limit to handle large state objects without hitting 413 errors
+
 ## [1.7.0] - 2025-01-27
 
 ### Fixed
