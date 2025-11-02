@@ -469,19 +469,77 @@ const getDataFromDatabase = () => {
 const saveDataToDatabase = (data) => {
     return new Promise((resolve, reject) => {
         db.serialize(() => {
+            let operationsCount = 0;
+            let completedOperations = 0;
+            let hasError = false;
+
+            const checkComplete = () => {
+                completedOperations++;
+                if (completedOperations === operationsCount && !hasError) {
+                    console.log('All data saved to database successfully');
+                    console.log('Data saved to database and ready for environment backup');
+                    resolve();
+                }
+            };
+
+            const handleError = (err) => {
+                if (!hasError) {
+                    hasError = true;
+                    console.error('Error saving to database:', err);
+                    reject(err);
+                }
+            };
+
             // Clear existing data
-            db.run("DELETE FROM products", (err) => { if (err) console.error('Error clearing products:', err); });
-            db.run("DELETE FROM orders", (err) => { if (err) console.error('Error clearing orders:', err); });
-            db.run("DELETE FROM rollCosts", (err) => { if (err) console.error('Error clearing rollCosts:', err); });
-            db.run("DELETE FROM tjSharePercentages", (err) => { if (err) console.error('Error clearing tjSharePercentages:', err); });
-            db.run("DELETE FROM brands", (err) => { if (err) console.error('Error clearing brands:', err); });
-            db.run("DELETE FROM styles", (err) => { if (err) console.error('Error clearing styles:', err); });
-            db.run("DELETE FROM packagingOptions", (err) => { if (err) console.error('Error clearing packagingOptions:', err); });
-            db.run("DELETE FROM multipliers", (err) => { if (err) console.error('Error clearing multipliers:', err); });
-            db.run("DELETE FROM settings", (err) => { if (err) console.error('Error clearing settings:', err); });
+            operationsCount++;
+            db.run("DELETE FROM products", (err) => { 
+                if (err) console.error('Error clearing products:', err);
+                checkComplete();
+            });
+            operationsCount++;
+            db.run("DELETE FROM orders", (err) => { 
+                if (err) console.error('Error clearing orders:', err);
+                checkComplete();
+            });
+            operationsCount++;
+            db.run("DELETE FROM rollCosts", (err) => { 
+                if (err) console.error('Error clearing rollCosts:', err);
+                checkComplete();
+            });
+            operationsCount++;
+            db.run("DELETE FROM tjSharePercentages", (err) => { 
+                if (err) console.error('Error clearing tjSharePercentages:', err);
+                checkComplete();
+            });
+            operationsCount++;
+            db.run("DELETE FROM brands", (err) => { 
+                if (err) console.error('Error clearing brands:', err);
+                checkComplete();
+            });
+            operationsCount++;
+            db.run("DELETE FROM styles", (err) => { 
+                if (err) console.error('Error clearing styles:', err);
+                checkComplete();
+            });
+            operationsCount++;
+            db.run("DELETE FROM packagingOptions", (err) => { 
+                if (err) console.error('Error clearing packagingOptions:', err);
+                checkComplete();
+            });
+            operationsCount++;
+            db.run("DELETE FROM multipliers", (err) => { 
+                if (err) console.error('Error clearing multipliers:', err);
+                checkComplete();
+            });
+            operationsCount++;
+            db.run("DELETE FROM settings", (err) => { 
+                if (err) console.error('Error clearing settings:', err);
+                checkComplete();
+            });
 
             // Insert products
             if (data.products && data.products.length > 0) {
+                operationsCount++;
                 const insertProduct = db.prepare(`INSERT INTO products 
                     (id, brand, model, style, filamentPerItem, preset, counts, title, packaging, packagingByCount, createdOn)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
@@ -501,113 +559,142 @@ const saveDataToDatabase = (data) => {
                         product.createdOn || new Date().toISOString()
                     );
                 });
-                insertProduct.finalize();
+                insertProduct.finalize((err) => {
+                    if (err) handleError(err);
+                    else checkComplete();
+                });
             }
 
             // Insert orders
             if (data.orders && data.orders.length > 0) {
-                try {
-                    const insertOrder = db.prepare(`INSERT INTO orders 
-                        (id, orderNumber, product, count, etsyPayout, shippingCost, productionCost, tjShare, joshShare, status, createdOn, paidOn, source, payoutId, items)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+                operationsCount++;
+                const insertOrder = db.prepare(`INSERT INTO orders 
+                    (id, orderNumber, product, count, etsyPayout, shippingCost, productionCost, tjShare, joshShare, status, createdOn, paidOn, source, payoutId, items)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
-                    data.orders.forEach(order => {
-                        insertOrder.run(
-                            order.id,
-                            order.orderNumber,
-                            order.product,
-                            order.count,
-                            order.etsyPayout,
-                            order.shippingCost,
-                            order.productionCost,
-                            order.tjShare,
-                            order.joshShare,
-                            order.status,
-                            order.createdOn,
-                            order.paidOn,
-                            order.source,
-                            order.payoutId,
-                            order.items ? JSON.stringify(order.items) : null
-                        );
-                    });
-                    insertOrder.finalize();
-                    console.log(`Orders saved successfully: ${data.orders.length} entries`);
-                } catch (error) {
-                    console.error('Error saving orders:', error);
-                    reject(error);
-                    return;
-                }
+                data.orders.forEach(order => {
+                    insertOrder.run(
+                        order.id,
+                        order.orderNumber,
+                        order.product,
+                        order.count,
+                        order.etsyPayout,
+                        order.shippingCost,
+                        order.productionCost,
+                        order.tjShare,
+                        order.joshShare,
+                        order.status,
+                        order.createdOn,
+                        order.paidOn,
+                        order.source,
+                        order.payoutId,
+                        order.items ? JSON.stringify(order.items) : null
+                    );
+                });
+                insertOrder.finalize((err) => {
+                    if (err) {
+                        console.error('Error saving orders:', err);
+                        handleError(err);
+                    } else {
+                        console.log(`Orders saved successfully: ${data.orders.length} entries`);
+                        checkComplete();
+                    }
+                });
             }
 
             // Insert brands
             if (data.brands && data.brands.length > 0) {
+                operationsCount++;
+                const insertBrand = db.prepare("INSERT INTO brands (name) VALUES (?)");
                 data.brands.forEach(brand => {
-                    db.run("INSERT INTO brands (name) VALUES (?)", [brand]);
+                    insertBrand.run([brand]);
+                });
+                insertBrand.finalize((err) => {
+                    if (err) handleError(err);
+                    else checkComplete();
                 });
             }
 
             // Insert styles
             if (data.styles && data.styles.length > 0) {
+                operationsCount++;
+                const insertStyle = db.prepare("INSERT INTO styles (name) VALUES (?)");
                 data.styles.forEach(style => {
-                    db.run("INSERT INTO styles (name) VALUES (?)", [style]);
+                    insertStyle.run([style]);
+                });
+                insertStyle.finalize((err) => {
+                    if (err) handleError(err);
+                    else checkComplete();
                 });
             }
 
             // Insert roll costs
             if (data.rollCosts && data.rollCosts.length > 0) {
+                operationsCount++;
                 const insertRollCost = db.prepare("INSERT INTO rollCosts (id, value, date) VALUES (?, ?, ?)");
                 data.rollCosts.forEach(rollCost => {
                     insertRollCost.run(rollCost.id, rollCost.value, rollCost.date);
                 });
-                insertRollCost.finalize();
+                insertRollCost.finalize((err) => {
+                    if (err) handleError(err);
+                    else checkComplete();
+                });
             }
 
             // Insert TJ share percentages
             if (data.tjSharePercentages && data.tjSharePercentages.length > 0) {
-                try {
-                    const insertTjShare = db.prepare("INSERT INTO tjSharePercentages (id, value, date) VALUES (?, ?, ?)");
-                    data.tjSharePercentages.forEach(tjShare => {
-                        insertTjShare.run(tjShare.id, tjShare.value, tjShare.date);
-                    });
-                    insertTjShare.finalize();
-                    console.log(`TJ share percentages saved successfully: ${data.tjSharePercentages.length} entries`);
-                } catch (error) {
-                    console.error('Error saving TJ share percentages:', error);
-                    reject(error);
-                    return;
-                }
+                operationsCount++;
+                const insertTjShare = db.prepare("INSERT INTO tjSharePercentages (id, value, date) VALUES (?, ?, ?)");
+                data.tjSharePercentages.forEach(tjShare => {
+                    insertTjShare.run(tjShare.id, tjShare.value, tjShare.date);
+                });
+                insertTjShare.finalize((err) => {
+                    if (err) {
+                        console.error('Error saving TJ share percentages:', err);
+                        handleError(err);
+                    } else {
+                        console.log(`TJ share percentages saved successfully: ${data.tjSharePercentages.length} entries`);
+                        checkComplete();
+                    }
+                });
             }
 
             // Insert multipliers
             if (data.multipliers) {
+                operationsCount++;
                 const insertMultiplier = db.prepare("INSERT INTO multipliers (id, preset, count, multiplier) VALUES (?, ?, ?, ?)");
                 Object.entries(data.multipliers).forEach(([preset, counts]) => {
                     Object.entries(counts).forEach(([count, multiplier]) => {
                         insertMultiplier.run(`${preset}-${count}`, preset, parseInt(count), multiplier);
                     });
                 });
-                insertMultiplier.finalize();
+                insertMultiplier.finalize((err) => {
+                    if (err) handleError(err);
+                    else checkComplete();
+                });
             }
 
             // Insert packaging options
             if (data.packagingOptions && data.packagingOptions.length > 0) {
+                operationsCount++;
+                const insertPackaging = db.prepare("INSERT INTO packagingOptions (name) VALUES (?)");
                 data.packagingOptions.forEach(option => {
-                    db.run("INSERT INTO packagingOptions (name) VALUES (?)", [option]);
+                    insertPackaging.run([option]);
+                });
+                insertPackaging.finalize((err) => {
+                    if (err) handleError(err);
+                    else checkComplete();
                 });
             }
 
             // Insert settings
             if (data.globalDiscount !== undefined) {
-                db.run("INSERT INTO settings (key, value) VALUES (?, ?)", ["globalDiscount", data.globalDiscount.toString()]);
+                operationsCount++;
+                db.run("INSERT INTO settings (key, value) VALUES (?, ?)", ["globalDiscount", data.globalDiscount.toString()], (err) => {
+                    if (err) handleError(err);
+                    else checkComplete();
+                });
             }
-
-            console.log('All data saved to database successfully');
-            
-            // Also save to environment variable for persistence across deployments
-            // Note: This won't actually update the environment variable in the current process
-            // but it will be available for the next deployment if we store it elsewhere
-            console.log('Data saved to database and ready for environment backup');
-            resolve();
         });
     });
 };
