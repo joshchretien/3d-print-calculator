@@ -1594,6 +1594,60 @@
                     .reduce((sum, order) => sum + (order.joshShare || 0), 0);
             }, [orders]);
 
+            // Helper function to get month key from date
+            const getMonthKey = (dateString) => {
+                if (!dateString) return null;
+                const date = new Date(dateString);
+                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            };
+
+            // Helper function to format month for display
+            const formatMonth = (monthKey) => {
+                if (!monthKey) return '';
+                const [year, month] = monthKey.split('-');
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                return `${monthNames[parseInt(month) - 1]} ${year}`;
+            };
+
+            // Calculate monthly breakdowns
+            const monthlyTotals = useMemo(() => {
+                const monthly = {};
+                
+                orders.forEach(order => {
+                    const monthKey = getMonthKey(order.createdOn);
+                    if (!monthKey) return;
+                    
+                    if (!monthly[monthKey]) {
+                        monthly[monthKey] = {
+                            earned: 0,
+                            paid: 0,
+                            productionCost: 0,
+                            returned: 0
+                        };
+                    }
+                    
+                    monthly[monthKey].earned += order.tjShare || 0;
+                    monthly[monthKey].productionCost += order.productionCost || 0;
+                    
+                    if (order.status === 'Paid') {
+                        monthly[monthKey].paid += order.tjShare || 0;
+                    }
+                    
+                    if (order.returned) {
+                        monthly[monthKey].returned += order.tjShare || 0;
+                    }
+                });
+                
+                // Sort months chronologically
+                const sortedMonths = Object.keys(monthly).sort();
+                
+                return sortedMonths.map(monthKey => ({
+                    month: monthKey,
+                    ...monthly[monthKey],
+                    owed: monthly[monthKey].earned - monthly[monthKey].paid - monthly[monthKey].returned
+                }));
+            }, [orders]);
+
             return (
                 <div>
                     <h2 className="text-2xl font-bold mb-6 text-gray-800">Orders</h2>
@@ -1669,22 +1723,111 @@
                             </div>
                             <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                                 <div className="text-3xl font-bold text-green-600">{utils.money(totalTjShare)}</div>
-                                <div className="text-sm text-gray-600 mt-1">Total Earned</div>
+                                <div className="text-sm text-gray-600 mt-1 mb-3">Total Earned</div>
+                                {monthlyTotals.length > 0 && (
+                                    <div className="space-y-2 mt-3">
+                                        {monthlyTotals.slice(-6).map((month) => {
+                                            const percent = totalTjShare > 0 ? (month.earned / totalTjShare * 100).toFixed(1) : 0;
+                                            return (
+                                                <div key={month.month}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-medium text-green-700">{formatMonth(month.month)}</span>
+                                                        <span className="text-xs text-gray-600">{utils.money(month.earned)} ({percent}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-green-200 rounded-full h-2 overflow-hidden">
+                                                        <div 
+                                                            className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                                                            style={{ width: `${percent}%` }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                             <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                                 <div className="text-3xl font-bold text-green-600">{utils.money(paidTjShare)}</div>
-                                <div className="text-sm text-gray-600 mt-1">Total Paid</div>
+                                <div className="text-sm text-gray-600 mt-1 mb-3">Total Paid</div>
+                                {monthlyTotals.length > 0 && (
+                                    <div className="space-y-2 mt-3">
+                                        {monthlyTotals.slice(-6).map((month) => {
+                                            const percent = paidTjShare > 0 ? (month.paid / paidTjShare * 100).toFixed(1) : 0;
+                                            return (
+                                                <div key={month.month}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-medium text-green-700">{formatMonth(month.month)}</span>
+                                                        <span className="text-xs text-gray-600">{utils.money(month.paid)} ({percent}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-green-200 rounded-full h-2 overflow-hidden">
+                                                        <div 
+                                                            className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                                                            style={{ width: `${percent}%` }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                             <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
                                 <div className="text-3xl font-bold text-orange-600">{utils.money(Math.max(0, totalTjShare - paidTjShare - returnTotals.totalTjReturn))}</div>
-                                <div className="text-sm text-gray-600 mt-1">Total Owed</div>
+                                <div className="text-sm text-gray-600 mt-1 mb-3">Total Owed</div>
                                 {returnTotals.totalTjReturn > 0 && (
-                                    <div className="text-xs text-red-600 mt-1">Returns: -{utils.money(returnTotals.totalTjReturn)}</div>
+                                    <div className="text-xs text-red-600 mb-3">Returns: -{utils.money(returnTotals.totalTjReturn)}</div>
+                                )}
+                                {monthlyTotals.length > 0 && (
+                                    <div className="space-y-2 mt-3">
+                                        {monthlyTotals.slice(-6).map((month) => {
+                                            const monthOwed = Math.max(0, month.earned - month.paid);
+                                            const totalOwed = Math.max(0, totalTjShare - paidTjShare - returnTotals.totalTjReturn);
+                                            const percent = totalOwed > 0 ? (monthOwed / totalOwed * 100).toFixed(1) : 0;
+                                            return (
+                                                <div key={month.month}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-medium text-orange-700">{formatMonth(month.month)}</span>
+                                                        <span className="text-xs text-gray-600">{utils.money(monthOwed)} ({percent}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-orange-200 rounded-full h-2 overflow-hidden">
+                                                        <div 
+                                                            className="bg-orange-500 h-2 rounded-full transition-all duration-300"
+                                                            style={{ width: `${percent}%` }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 )}
                             </div>
                             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                                 <div className="text-3xl font-bold text-gray-600">{utils.money(orders.reduce((sum, order) => sum + (order.productionCost || 0), 0))}</div>
-                                <div className="text-sm text-gray-600 mt-1">Total Production Cost</div>
+                                <div className="text-sm text-gray-600 mt-1 mb-3">Total Production Cost</div>
+                                {(() => {
+                                    const totalProdCost = orders.reduce((sum, order) => sum + (order.productionCost || 0), 0);
+                                    return monthlyTotals.length > 0 && (
+                                        <div className="space-y-2 mt-3">
+                                            {monthlyTotals.slice(-6).map((month) => {
+                                                const percent = totalProdCost > 0 ? (month.productionCost / totalProdCost * 100).toFixed(1) : 0;
+                                                return (
+                                                    <div key={month.month}>
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className="text-xs font-medium text-gray-700">{formatMonth(month.month)}</span>
+                                                            <span className="text-xs text-gray-600">{utils.money(month.productionCost)} ({percent}%)</span>
+                                                        </div>
+                                                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                                            <div 
+                                                                className="bg-gray-500 h-2 rounded-full transition-all duration-300"
+                                                                style={{ width: `${percent}%` }}
+                                                            ></div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </div>
                     </div>
