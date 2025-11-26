@@ -54,8 +54,20 @@ const initDatabase = () => {
                 paidOn TEXT,
                 source TEXT,
                 payoutId TEXT,
-                items TEXT
+                items TEXT,
+                returned INTEGER DEFAULT 0
             )`);
+            
+            // Add returned column to existing orders table if it doesn't exist (migration)
+            db.run(`ALTER TABLE orders ADD COLUMN returned INTEGER DEFAULT 0`, (err) => {
+                // Ignore error if column already exists - this is expected on first creation
+                if (err && !err.message.includes('duplicate column name')) {
+                    // Only log if it's not the expected "duplicate column" error
+                    if (!err.message.toLowerCase().includes('duplicate')) {
+                        console.warn('Could not add returned column (may already exist):', err.message);
+                    }
+                }
+            });
 
             // Roll costs table
             db.run(`CREATE TABLE IF NOT EXISTS rollCosts (
@@ -442,7 +454,8 @@ const getDataFromDatabase = () => {
                                         
                                         data.orders = orders.map(order => ({
                                             ...order,
-                                            items: order.items ? JSON.parse(order.items) : undefined
+                                            items: order.items ? JSON.parse(order.items) : undefined,
+                                            returned: order.returned === 1 || order.returned === true || false
                                         }));
 
                                         // Get global discount
@@ -569,8 +582,8 @@ const saveDataToDatabase = (data) => {
             if (data.orders && data.orders.length > 0) {
                 operationsCount++;
                 const insertOrder = db.prepare(`INSERT INTO orders 
-                    (id, orderNumber, product, count, etsyPayout, shippingCost, productionCost, tjShare, joshShare, status, createdOn, paidOn, source, payoutId, items)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+                    (id, orderNumber, product, count, etsyPayout, shippingCost, productionCost, tjShare, joshShare, status, createdOn, paidOn, source, payoutId, items, returned)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
                 data.orders.forEach(order => {
                     insertOrder.run(
@@ -588,7 +601,8 @@ const saveDataToDatabase = (data) => {
                         order.paidOn,
                         order.source,
                         order.payoutId,
-                        order.items ? JSON.stringify(order.items) : null
+                        order.items ? JSON.stringify(order.items) : null,
+                        order.returned ? 1 : 0
                     );
                 });
                 insertOrder.finalize((err) => {
