@@ -440,10 +440,18 @@
 
             const latestRoll = useMemo(() => state.rollCosts[state.rollCosts.length - 1]?.value || CONSTANTS.DEFAULT_ROLL_COST, [state.rollCosts]);
             const costPerGram = useMemo(() => latestRoll / 1000, [latestRoll]);
-            const mpKey = useMemo(() => ensurePresetForStyle(product.style, product.preset, state.multipliers), [product.style, product.preset, state.multipliers]);
+            
+            // Use editPreset when editing, otherwise use product.preset
+            const currentPreset = isEditing ? editPreset : product.preset;
+            const mpKey = useMemo(() => ensurePresetForStyle(product.style, currentPreset, state.multipliers), [product.style, currentPreset, state.multipliers]);
             const multipliers = useMemo(() => {
                 return state.multipliers[mpKey] || DEFAULT_MULTIPLIERS[mpKey] || {};
             }, [state.multipliers[mpKey], mpKey]);
+            
+            // Calculate counts from current preset (editPreset when editing, product.preset otherwise)
+            const currentCounts = useMemo(() => {
+                return countsFromPreset(currentPreset);
+            }, [currentPreset]);
 
             const handleRemove = useCallback(() => {
                 if (confirm(`Are you sure you want to remove "${product.title}"? This action cannot be undone.`)) {
@@ -549,7 +557,7 @@
                                         onChange={(e) => setEditPreset(e.target.value)}
                                         className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     >
-                                        {Object.keys(state.multipliers).map((m) => (
+                                        {Array.from(new Set([...Object.keys(state.multipliers), ...Object.keys(DEFAULT_MULTIPLIERS)])).sort().map((m) => (
                                             <option key={m} value={m}>{m}</option>
                                         ))}
                                     </select>
@@ -562,7 +570,7 @@
                         <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                             <h4 className="text-sm font-medium text-blue-800 mb-2">Packaging by Count</h4>
                             <div className="grid grid-cols-1 gap-2">
-                                {product.counts.map((count) => (
+                                {currentCounts.map((count) => (
                                     <div key={count} className="flex items-center gap-2">
                                         <label className="w-12 text-xs text-gray-600">Count {count}:</label>
                                         <select
@@ -596,9 +604,10 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {product.counts.map((count) => {
+                                {currentCounts.map((count) => {
                                     const unitMultiplier = Number(multipliers[count] || 0);
-                                    const filament = (product.filamentPerItem || 0) * count;
+                                    const currentFilament = isEditing ? (utils.validateNumber(editFilament) || product.filamentPerItem || 0) : (product.filamentPerItem || 0);
+                                    const filament = currentFilament * count;
                                     const myCostPrecise = filament * costPerGram;
                                     const total = myCostPrecise * unitMultiplier;
                                     const discountPercentage = (state.globalDiscount !== undefined ? state.globalDiscount : 25) / 100;
@@ -617,7 +626,7 @@
                                             <td className="p-3 text-right text-gray-600">{filament.toFixed(2)}</td>
                                             <td className="p-3 text-right text-gray-600">{utils.money(myCostDisplay)}</td>
                                             <td className="p-3 text-right text-green-600 font-medium">{utils.money(gross)}</td>
-                                            <td className="p-3 text-left text-gray-700">{product.packagingByCount?.[count] || '—'}</td>
+                                            <td className="p-3 text-left text-gray-700">{(isEditing ? editPackaging : product.packagingByCount)?.[count] || '—'}</td>
                                         </tr>
                                     );
                                 })}
@@ -847,7 +856,7 @@
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Preset</label>
                                     <select value={preset} onChange={(e) => setPreset(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                        {Object.keys(state.multipliers).map((m) => (
+                                        {Array.from(new Set([...Object.keys(state.multipliers), ...Object.keys(DEFAULT_MULTIPLIERS)])).sort().map((m) => (
                                             <option key={m} value={m}>{m}</option>
                                         ))}
                                     </select>
