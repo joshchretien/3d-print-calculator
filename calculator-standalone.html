@@ -1034,6 +1034,7 @@
             const [shippingCostError, setShippingCostError] = useState("");
             const [orderItems, setOrderItems] = useState([{ id: utils.uid(), product: "", count: "", quantity: 1 }]);
             const [expandedPayouts, setExpandedPayouts] = useState(new Set());
+            const [orderSearch, setOrderSearch] = useState('');
             
             // Edit order state
             const [editingOrder, setEditingOrder] = useState(null);
@@ -1832,6 +1833,51 @@
                         </div>
                     </div>
 
+                    {/* Order Search */}
+                    <div className="mb-6 bg-white rounded-xl shadow-lg border border-gray-200 p-4">
+                        <div className="flex items-center gap-4">
+                            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Search Order:</label>
+                            <input
+                                type="text"
+                                value={orderSearch}
+                                onChange={(e) => setOrderSearch(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && orderSearch.trim()) {
+                                        const foundOrder = orders.find(o => 
+                                            o.orderNumber && o.orderNumber.toString().toLowerCase().includes(orderSearch.trim().toLowerCase())
+                                        );
+                                        if (foundOrder) {
+                                            startEditOrder(foundOrder);
+                                            setOrderSearch('');
+                                        } else {
+                                            alert(`No order found with order number containing "${orderSearch.trim()}"`);
+                                        }
+                                    }
+                                }}
+                                placeholder="Enter order number and press Enter..."
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                            <button
+                                onClick={() => {
+                                    if (orderSearch.trim()) {
+                                        const foundOrder = orders.find(o => 
+                                            o.orderNumber && o.orderNumber.toString().toLowerCase().includes(orderSearch.trim().toLowerCase())
+                                        );
+                                        if (foundOrder) {
+                                            startEditOrder(foundOrder);
+                                            setOrderSearch('');
+                                        } else {
+                                            alert(`No order found with order number containing "${orderSearch.trim()}"`);
+                                        }
+                                    }
+                                }}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+                            >
+                                Search
+                            </button>
+                        </div>
+                    </div>
+
             {/* Add Order Section */}
             <div className={`mb-6 rounded-xl shadow-lg border border-gray-200 transition-colors duration-300 ${
                 source === 'Website' ? 'bg-blue-50 border-blue-200' : 
@@ -2288,19 +2334,43 @@
                                     </button>
                                 </div>
 
-                                <div className="mt-6 flex justify-end gap-3">
-                                    <button 
-                                        onClick={cancelEditOrder}
-                                        className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors duration-200"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button 
-                                        onClick={saveEditOrder}
-                                        className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors duration-200"
-                                    >
-                                        Save Changes
-                                    </button>
+                                <div className="mt-6 flex justify-between items-center">
+                                    <div>
+                                        {editingOrder && (
+                                            <button 
+                                                onClick={() => {
+                                                    if (editingOrder.returned) {
+                                                        dispatch({ type: ACTIONS.UNMARK_AS_RETURNED, id: editingOrder.id });
+                                                        alert("Order unmarked as returned");
+                                                    } else {
+                                                        dispatch({ type: ACTIONS.MARK_AS_RETURNED, id: editingOrder.id });
+                                                        alert("Order marked as returned");
+                                                    }
+                                                }}
+                                                className={`px-6 py-2 rounded-lg transition-colors duration-200 ${
+                                                    editingOrder.returned
+                                                        ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                                                        : 'bg-orange-600 hover:bg-orange-700 text-white'
+                                                }`}
+                                            >
+                                                {editingOrder.returned ? 'Unmark Returned' : 'Mark Returned'}
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button 
+                                            onClick={cancelEditOrder}
+                                            className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors duration-200"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button 
+                                            onClick={saveEditOrder}
+                                            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors duration-200"
+                                        >
+                                            Save Changes
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
