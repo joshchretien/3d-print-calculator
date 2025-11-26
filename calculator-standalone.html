@@ -1511,9 +1511,14 @@
                     joshShare = profit + totalProductionCost;
                     tjShare = 0;
                 } else {
-                    // Default TJ logic: TJ gets 70% of profit PLUS production cost
-                    const tjProfitShare = profit * CONSTANTS.TJ_SHARE_PERCENTAGE;
-                    const joshProfitShare = profit * (1 - CONSTANTS.TJ_SHARE_PERCENTAGE);
+                    // Get the latest TJ share percentage from history
+                    const latestTjShare = state.tjSharePercentages && state.tjSharePercentages.length > 0 
+                        ? state.tjSharePercentages[state.tjSharePercentages.length - 1].value / 100
+                        : CONSTANTS.TJ_SHARE_PERCENTAGE;
+                    
+                    // Default TJ logic: TJ gets X% of profit PLUS production cost
+                    const tjProfitShare = profit * latestTjShare;
+                    const joshProfitShare = profit * (1 - latestTjShare);
                     tjShare = tjProfitShare + totalProductionCost;
                     joshShare = joshProfitShare;
                 }
@@ -1536,7 +1541,7 @@
                 
                 cancelEditOrder();
                 alert("Order updated successfully!");
-            }, [editMaker, editSource, editOrderNumber, editEtsyPayout, editShippingCost, editOrderItems, editingOrder, state.products, state.rollCosts, dispatch]);
+            }, [editMaker, editSource, editOrderNumber, editEtsyPayout, editShippingCost, editOrderItems, editingOrder, state.products, state.rollCosts, state.tjSharePercentages, dispatch]);
 
             const totalTjShare = useMemo(() => {
                 return orders.reduce((sum, order) => sum + (order.tjShare || 0), 0);
