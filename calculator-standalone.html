@@ -1651,7 +1651,51 @@
 
             return (
                 <div>
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Orders</h2>
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold text-gray-800">Orders</h2>
+                        {/* Order Search */}
+                        <div className="flex items-center gap-4">
+                            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Search Order:</label>
+                            <input
+                                type="text"
+                                value={orderSearch}
+                                onChange={(e) => setOrderSearch(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && orderSearch.trim()) {
+                                        const foundOrder = orders.find(o => 
+                                            o.orderNumber && o.orderNumber.toString().toLowerCase().includes(orderSearch.trim().toLowerCase())
+                                        );
+                                        if (foundOrder) {
+                                            startEditOrder(foundOrder);
+                                            setOrderSearch('');
+                                        } else {
+                                            alert(`No order found with order number containing "${orderSearch.trim()}"`);
+                                        }
+                                    }
+                                }}
+                                placeholder="Enter order number and press Enter..."
+                                className="w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                            <button
+                                onClick={() => {
+                                    if (orderSearch.trim()) {
+                                        const foundOrder = orders.find(o => 
+                                            o.orderNumber && o.orderNumber.toString().toLowerCase().includes(orderSearch.trim().toLowerCase())
+                                        );
+                                        if (foundOrder) {
+                                            startEditOrder(foundOrder);
+                                            setOrderSearch('');
+                                        } else {
+                                            alert(`No order found with order number containing "${orderSearch.trim()}"`);
+                                        }
+                                    }
+                                }}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+                            >
+                                Search
+                            </button>
+                        </div>
+                    </div>
                     
                     {/* TJ Summary Section */}
                     <div className="mb-6">
@@ -1830,51 +1874,6 @@
                                     );
                                 })()}
                             </div>
-                        </div>
-                    </div>
-
-                    {/* Order Search */}
-                    <div className="mb-6 bg-white rounded-xl shadow-lg border border-gray-200 p-4">
-                        <div className="flex items-center gap-4">
-                            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Search Order:</label>
-                            <input
-                                type="text"
-                                value={orderSearch}
-                                onChange={(e) => setOrderSearch(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && orderSearch.trim()) {
-                                        const foundOrder = orders.find(o => 
-                                            o.orderNumber && o.orderNumber.toString().toLowerCase().includes(orderSearch.trim().toLowerCase())
-                                        );
-                                        if (foundOrder) {
-                                            startEditOrder(foundOrder);
-                                            setOrderSearch('');
-                                        } else {
-                                            alert(`No order found with order number containing "${orderSearch.trim()}"`);
-                                        }
-                                    }
-                                }}
-                                placeholder="Enter order number and press Enter..."
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            />
-                            <button
-                                onClick={() => {
-                                    if (orderSearch.trim()) {
-                                        const foundOrder = orders.find(o => 
-                                            o.orderNumber && o.orderNumber.toString().toLowerCase().includes(orderSearch.trim().toLowerCase())
-                                        );
-                                        if (foundOrder) {
-                                            startEditOrder(foundOrder);
-                                            setOrderSearch('');
-                                        } else {
-                                            alert(`No order found with order number containing "${orderSearch.trim()}"`);
-                                        }
-                                    }
-                                }}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
-                            >
-                                Search
-                            </button>
                         </div>
                     </div>
 
