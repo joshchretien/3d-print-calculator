@@ -1028,6 +1028,8 @@
             const [shippingCostError, setShippingCostError] = useState("");
             const [orderItems, setOrderItems] = useState([{ id: utils.uid(), product: "", count: "", quantity: 1 }]);
             const [expandedPayouts, setExpandedPayouts] = useState(new Set());
+            const [showReturns, setShowReturns] = useState(false);
+            const [selectedReturnOrderIds, setSelectedReturnOrderIds] = useState(new Set());
             
             // Edit order state
             const [editingOrder, setEditingOrder] = useState(null);
@@ -1151,6 +1153,19 @@
                     return newSet;
                 });
             }, []);
+
+            // Calculate return totals (only TJ and Josh shares, not shipping)
+            const returnTotals = useMemo(() => {
+                let totalTjReturn = 0;
+                let totalJoshReturn = 0;
+                unpaidOrders.forEach(order => {
+                    if (selectedReturnOrderIds.has(order.id)) {
+                        totalTjReturn += order.tjShare || 0;
+                        totalJoshReturn += order.joshShare || 0;
+                    }
+                });
+                return { totalTjReturn, totalJoshReturn };
+            }, [unpaidOrders, selectedReturnOrderIds]);
 
             // Group paid orders by payoutId (each bulk mark paid creates a separate payout)
             const payoutsByDate = useMemo(() => {
@@ -2174,6 +2189,7 @@
                                                     />
                                                 </th>
                                                 <th className="p-3 text-left font-medium">Maker</th>
+                                                <th className="p-3 text-left font-medium">Scan Date</th>
                                                 <th className="p-3 text-left font-medium">Source</th>
                                                 <th className="p-3 text-left font-medium">Order #</th>
                                                 <th className="p-3 text-left font-medium">Product</th>
@@ -2217,6 +2233,9 @@
                                                                     {order.maker || 'TJ'}
                                                                 </span>
                                                             )}
+                                                        </td>
+                                                        <td className="p-3 font-medium text-gray-600">
+                                                            {itemIndex === 0 && (order.createdOn ? new Date(order.createdOn).toLocaleDateString() : '—')}
                                                         </td>
                                                         <td className="p-3 font-medium">
                                                             {itemIndex === 0 && (
@@ -2294,10 +2313,121 @@
                         )}
                     </div>
 
+                    {/* Returns Section */}
+                    {showReturns && (
+                        <div className="mb-6 bg-red-50 rounded-xl shadow-lg border border-red-200 p-6">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-semibold text-red-600">Returns</h3>
+                                <button
+                                    onClick={() => {
+                                        setShowReturns(false);
+                                        setSelectedReturnOrderIds(new Set());
+                                    }}
+                                    className="text-red-600 hover:text-red-800 text-sm"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-4">Select orders that were returned for refund. These will subtract from payout totals.</p>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="p-3 text-left">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={unpaidOrders.length > 0 && unpaidOrders.every(order => selectedReturnOrderIds.has(order.id))}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedReturnOrderIds(new Set(unpaidOrders.map(o => o.id)));
+                                                        } else {
+                                                            setSelectedReturnOrderIds(new Set());
+                                                        }
+                                                    }}
+                                                    className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                                />
+                                            </th>
+                                            <th className="p-3 text-left font-medium">Scan Date</th>
+                                            <th className="p-3 text-left font-medium">Source</th>
+                                            <th className="p-3 text-left font-medium">Order #</th>
+                                            <th className="p-3 text-left font-medium">Product</th>
+                                            <th className="p-3 text-right font-medium">TJ Share</th>
+                                            <th className="p-3 text-right font-medium">Josh Share</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {unpaidOrders.map((order) => {
+                                            const orderItems = order.items || [{ productTitle: order.product || 'Legacy Product', count: order.count || 0, quantity: 1 }];
+                                            return orderItems.map((item, itemIndex) => (
+                                                <tr key={`${order.id}-${itemIndex}`} className={`border-b transition-colors ${
+                                                    selectedReturnOrderIds.has(order.id) ? 'bg-red-100' : 'bg-white hover:bg-gray-50'
+                                                }`}>
+                                                    <td className="p-3 text-center">
+                                                        {itemIndex === 0 && (
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedReturnOrderIds.has(order.id)}
+                                                                onChange={() => {
+                                                                    setSelectedReturnOrderIds(prev => {
+                                                                        const newSet = new Set(prev);
+                                                                        if (newSet.has(order.id)) {
+                                                                            newSet.delete(order.id);
+                                                                        } else {
+                                                                            newSet.add(order.id);
+                                                                        }
+                                                                        return newSet;
+                                                                    });
+                                                                }}
+                                                                className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                                            />
+                                                        )}
+                                                    </td>
+                                                    <td className="p-3 text-gray-600">
+                                                        {itemIndex === 0 && (order.createdOn ? new Date(order.createdOn).toLocaleDateString() : '—')}
+                                                    </td>
+                                                    <td className="p-3 font-medium">
+                                                        {itemIndex === 0 && (
+                                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                                order.source === 'Etsy' ? 'bg-orange-100 text-orange-800' : 
+                                                                order.source === 'Website' ? 'bg-blue-100 text-blue-800' : 
+                                                                order.source === 'eBay' ? 'bg-green-100 text-green-800' :
+                                                                'bg-gray-100 text-gray-800'
+                                                            }`}>
+                                                                {order.source || 'Etsy'}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-3 font-medium">
+                                                        {itemIndex === 0 && order.orderNumber}
+                                                    </td>
+                                                    <td className="p-3">{item.productTitle}</td>
+                                                    <td className="p-3 text-right text-red-600 font-medium">
+                                                        {itemIndex === 0 && `-${utils.money(order.tjShare || 0)}`}
+                                                    </td>
+                                                    <td className="p-3 text-right text-red-600 font-medium">
+                                                        {itemIndex === 0 && `-${utils.money(order.joshShare || 0)}`}
+                                                    </td>
+                                                </tr>
+                                            ));
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Payouts Section */}
                     {payoutsByDate.length > 0 && (
                         <div className="mb-6">
-                            <h3 className="text-lg font-semibold mb-4 text-green-600">Payouts</h3>
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-semibold text-green-600">Payouts</h3>
+                                <button
+                                    onClick={() => setShowReturns(!showReturns)}
+                                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 text-sm"
+                                >
+                                    {showReturns ? 'Hide Returns' : 'Show Returns'}
+                                </button>
+                            </div>
                             <div className="space-y-4">
                                 {payoutsByDate.map((payout) => {
                                     const payoutKey = payout.payoutId || payout.date; // Use payoutId if available, fallback to date
@@ -2316,10 +2446,16 @@
                                                         Etsy: {utils.money(payout.totalEtsyPayout)}
                                                     </span>
                                                     <span className="text-green-600 font-medium">
-                                                        TJ: {utils.money(payout.totalTjShare)}
+                                                        TJ: {utils.money(Math.max(0, payout.totalTjShare - returnTotals.totalTjReturn))}
+                                                        {selectedReturnOrderIds.size > 0 && returnTotals.totalTjReturn > 0 && (
+                                                            <span className="text-red-600 ml-1">(-{utils.money(returnTotals.totalTjReturn)})</span>
+                                                        )}
                                                     </span>
                                                     <span className="text-green-600 font-medium">
-                                                        Josh: {utils.money(payout.totalJoshShare)}
+                                                        Josh: {utils.money(Math.max(0, payout.totalJoshShare - returnTotals.totalJoshReturn))}
+                                                        {selectedReturnOrderIds.size > 0 && returnTotals.totalJoshReturn > 0 && (
+                                                            <span className="text-red-600 ml-1">(-{utils.money(returnTotals.totalJoshReturn)})</span>
+                                                        )}
                                                     </span>
                                                     <span className="text-gray-600">
                                                         Production: {utils.money(payout.totalProductionCost)}
@@ -2372,6 +2508,7 @@
                                                                         className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
                                                                     />
                                                                 </th>
+                                                                <th className="p-3 text-left font-medium">Scan Date</th>
                                                                 <th className="p-3 text-left font-medium">Source</th>
                                                                 <th className="p-3 text-left font-medium">Order #</th>
                                                                 <th className="p-3 text-left font-medium">Product</th>
@@ -2404,6 +2541,9 @@
                                                                                     className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
                                                                                 />
                                                                             )}
+                                                                        </td>
+                                                                        <td className="p-3 font-medium text-gray-600">
+                                                                            {itemIndex === 0 && (order.createdOn ? new Date(order.createdOn).toLocaleDateString() : '—')}
                                                                         </td>
                                                                         <td className="p-3 font-medium">
                                                                             {itemIndex === 0 && (
