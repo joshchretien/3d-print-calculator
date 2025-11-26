@@ -1704,6 +1704,7 @@
                                         {(() => {
                                             const etsyOrders = orders.filter(o => o.source === 'Etsy' || !o.source);
                                             const websiteOrders = orders.filter(o => o.source === 'Website');
+                                            const ebayOrders = orders.filter(o => o.source === 'eBay');
                                             
                                             // For Etsy: Find the most recent order by creation timestamp
                                             let lastEtsyOrder = null;
@@ -1721,6 +1722,12 @@
                                                 });
                                             }
                                             
+                                            // For eBay: Find the most recent order by creation timestamp
+                                            let lastEbayOrder = null;
+                                            if (ebayOrders.length > 0) {
+                                                lastEbayOrder = ebayOrders.sort((a, b) => new Date(b.createdOn || '') - new Date(a.createdOn || ''))[0];
+                                            }
+                                            
                                             return (
                                                 <>
                                                     {lastEtsyOrder && (
@@ -1731,6 +1738,11 @@
                                                     {lastWebsiteOrder && (
                                                         <div className="text-sm text-gray-600 bg-blue-100 px-2 py-1 rounded">
                                                             Last Website Order: <span className="font-medium text-blue-800">{lastWebsiteOrder.orderNumber}</span>
+                                                        </div>
+                                                    )}
+                                                    {lastEbayOrder && (
+                                                        <div className="text-sm text-gray-600 bg-green-100 px-2 py-1 rounded">
+                                                            Last eBay Order: <span className="font-medium text-green-800">{lastEbayOrder.orderNumber}</span>
                                                         </div>
                                                     )}
                                                 </>
