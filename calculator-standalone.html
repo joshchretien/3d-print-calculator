@@ -2616,25 +2616,39 @@
                                                 <span className="text-gray-700">Total Production Cost:</span>
                                                 <span className="font-semibold text-gray-600">{utils.money(payoutSummary.totalProductionCost)}</span>
                                             </div>
-                                            {payoutSummary.returnsTj > 0 || payoutSummary.returnsJosh > 0 ? (
-                                                <>
-                                                    <div className="border-t border-gray-300 pt-3 mt-3">
-                                                        <div className="flex justify-between items-center mb-2">
-                                                            <span className="text-gray-700">Returns (TJ):</span>
-                                                            <span className="font-semibold text-red-600">-{utils.money(payoutSummary.returnsTj)}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-gray-700">Returns (Josh):</span>
-                                                            <span className="font-semibold text-red-600">-{utils.money(payoutSummary.returnsJosh)}</span>
-                                                        </div>
+                                            {returnedOrders.length > 0 && (
+                                                <div className="border-t border-gray-300 pt-3 mt-3">
+                                                    <div className="mb-3">
+                                                        <label className="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={includeReturnsInPayout}
+                                                                onChange={(e) => setIncludeReturnsInPayout(e.target.checked)}
+                                                                className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                                                            />
+                                                            <span className="text-sm font-medium text-gray-700">Include Pending Return Subtractions in this payout</span>
+                                                        </label>
                                                     </div>
-                                                </>
-                                            ) : null}
+                                                    {includeReturnsInPayout && (
+                                                        <div className="bg-red-50 rounded p-3 mb-3">
+                                                            <div className="text-sm font-semibold text-red-700 mb-2">Pending Return Subtractions:</div>
+                                                            <div className="flex justify-between items-center mb-1">
+                                                                <span className="text-gray-700">Returns (TJ):</span>
+                                                                <span className="font-semibold text-red-600">-{utils.money(returnTotals.totalTjReturn)}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-gray-700">Returns (Josh):</span>
+                                                                <span className="font-semibold text-red-600">-{utils.money(returnTotals.totalJoshReturn)}</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                             <div className="border-t-2 border-gray-400 pt-3 mt-3">
                                                 <div className="flex justify-between items-center mb-2">
                                                     <span className="text-lg font-semibold text-gray-800">Payout to TJ:</span>
                                                     <span className="text-xl font-bold text-green-600">
-                                                        {utils.money(includeReturnsInPayout ? payoutSummary.totalTjShare : payoutSummary.totalTjShare + returnTotals.totalTjReturn)}
+                                                        {utils.money(includeReturnsInPayout ? Math.max(0, payoutSummary.totalTjShare - returnTotals.totalTjReturn) : payoutSummary.totalTjShare)}
                                                         {includeReturnsInPayout && returnTotals.totalTjReturn > 0 && (
                                                             <span className="text-sm text-red-600 ml-2">(includes returns)</span>
                                                         )}
@@ -2643,7 +2657,7 @@
                                                 <div className="flex justify-between items-center">
                                                     <span className="text-lg font-semibold text-gray-800">Payout to Josh:</span>
                                                     <span className="text-xl font-bold text-green-600">
-                                                        {utils.money(includeReturnsInPayout ? payoutSummary.totalJoshShare : payoutSummary.totalJoshShare + returnTotals.totalJoshReturn)}
+                                                        {utils.money(includeReturnsInPayout ? Math.max(0, payoutSummary.totalJoshShare - returnTotals.totalJoshReturn) : payoutSummary.totalJoshShare)}
                                                         {includeReturnsInPayout && returnTotals.totalJoshReturn > 0 && (
                                                             <span className="text-sm text-red-600 ml-2">(includes returns)</span>
                                                         )}
