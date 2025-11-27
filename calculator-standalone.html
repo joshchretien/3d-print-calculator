@@ -1233,10 +1233,13 @@
                             payoutId: order.payoutId,
                             date: displayDate,
                             orders: [],
+                            returnOrders: [],
                             totalEtsyPayout: 0,
                             totalTjShare: 0,
                             totalJoshShare: 0,
-                            totalProductionCost: 0
+                            totalProductionCost: 0,
+                            totalTjReturn: 0,
+                            totalJoshReturn: 0
                         };
                     }
                     grouped[payoutKey].orders.push(order);
@@ -1246,20 +1249,24 @@
                     grouped[payoutKey].totalProductionCost += order.productionCost || 0;
                 });
                 
+                // Add returns that were included in each payout
+                orders.forEach(order => {
+                    if (order.returned && order.returnPayoutId) {
+                        const payoutKey = order.returnPayoutId;
+                        if (grouped[payoutKey]) {
+                            grouped[payoutKey].returnOrders.push(order);
+                            grouped[payoutKey].totalTjReturn += order.tjShare || 0;
+                            grouped[payoutKey].totalJoshReturn += order.joshShare || 0;
+                            // Subtract returns from totals
+                            grouped[payoutKey].totalTjShare = Math.max(0, grouped[payoutKey].totalTjShare - (order.tjShare || 0));
+                            grouped[payoutKey].totalJoshShare = Math.max(0, grouped[payoutKey].totalJoshShare - (order.joshShare || 0));
+                        }
+                    }
+                });
+                
                 const sortedPayouts = Object.values(grouped).sort((a, b) => new Date(b.date) - new Date(a.date));
-                
-                // Subtract returns from the most recent payout (the one that was just processed)
-                // Returns should only affect the next payout, which is the most recent one
-                if (sortedPayouts.length > 0 && returnTotals.totalTjReturn > 0 || returnTotals.totalJoshReturn > 0) {
-                    const mostRecentPayout = sortedPayouts[0];
-                    mostRecentPayout.totalTjShare = Math.max(0, mostRecentPayout.totalTjShare - returnTotals.totalTjReturn);
-                    mostRecentPayout.totalJoshShare = Math.max(0, mostRecentPayout.totalJoshShare - returnTotals.totalJoshReturn);
-                    mostRecentPayout.totalTjReturn = returnTotals.totalTjReturn;
-                    mostRecentPayout.totalJoshReturn = returnTotals.totalJoshReturn;
-                }
-                
                 return sortedPayouts;
-            }, [paidOrders, returnTotals]);
+            }, [paidOrders, orders]);
 
             const bulkMarkPaid = useCallback(() => {
                 if (selectedOrderIds.size === 0) {
@@ -2900,15 +2907,9 @@
                                                     </span>
                                                     <span className="text-green-600 font-medium">
                                                         TJ: {utils.money(payout.totalTjShare)}
-                                                        {payout.totalTjReturn > 0 && (
-                                                            <span className="text-red-600 ml-1">(-{utils.money(payout.totalTjReturn)})</span>
-                                                        )}
                                                     </span>
                                                     <span className="text-green-600 font-medium">
                                                         Josh: {utils.money(payout.totalJoshShare)}
-                                                        {payout.totalJoshReturn > 0 && (
-                                                            <span className="text-red-600 ml-1">(-{utils.money(payout.totalJoshReturn)})</span>
-                                                        )}
                                                     </span>
                                                     <span className="text-gray-600">
                                                         Production: {utils.money(payout.totalProductionCost)}
