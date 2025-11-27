@@ -1249,17 +1249,18 @@
                     grouped[payoutKey].totalProductionCost += order.productionCost || 0;
                 });
                 
-                // Add returns that were included in each payout
+                // Add returns that were included in each payout (only for payouts with payoutId)
                 orders.forEach(order => {
                     if (order.returned && order.returnPayoutId) {
-                        const payoutKey = order.returnPayoutId;
-                        if (grouped[payoutKey]) {
-                            grouped[payoutKey].returnOrders.push(order);
-                            grouped[payoutKey].totalTjReturn += order.tjShare || 0;
-                            grouped[payoutKey].totalJoshReturn += order.joshShare || 0;
+                        // Only include returns in payouts that have a payoutId (not legacy date-based payouts)
+                        const payout = Object.values(grouped).find(p => p.payoutId === order.returnPayoutId);
+                        if (payout && payout.payoutId) {
+                            payout.returnOrders.push(order);
+                            payout.totalTjReturn += order.tjShare || 0;
+                            payout.totalJoshReturn += order.joshShare || 0;
                             // Subtract returns from totals
-                            grouped[payoutKey].totalTjShare = Math.max(0, grouped[payoutKey].totalTjShare - (order.tjShare || 0));
-                            grouped[payoutKey].totalJoshShare = Math.max(0, grouped[payoutKey].totalJoshShare - (order.joshShare || 0));
+                            payout.totalTjShare = Math.max(0, payout.totalTjShare - (order.tjShare || 0));
+                            payout.totalJoshShare = Math.max(0, payout.totalJoshShare - (order.joshShare || 0));
                         }
                     }
                 });
