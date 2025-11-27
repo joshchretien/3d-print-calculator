@@ -3021,8 +3021,8 @@
                 return sortedMonths.map(monthKey => ({
                     month: monthKey,
                     ...monthly[monthKey],
-                    tjOwed: monthly[monthKey].tjEarned - monthly[monthKey].tjPaid,
-                    joshOwed: monthly[monthKey].joshEarned - monthly[monthKey].joshPaid
+                    tjOwed: Math.max(0, monthly[monthKey].tjEarned - monthly[monthKey].tjPaid - monthly[monthKey].tjReturned),
+                    joshOwed: Math.max(0, monthly[monthKey].joshEarned - monthly[monthKey].joshPaid - monthly[monthKey].joshReturned)
                 }));
             }, [filteredOrders]);
             
@@ -3366,7 +3366,7 @@
                                     <div className="space-y-2">
                                         {monthlyTotals.slice(-6).map((month) => {
                                             const monthOwed = Math.max(0, month.tjOwed);
-                                            const totalOwed = Math.max(0, tjTotals.owed);
+                                            const totalOwed = Math.max(0, tjTotals.owed - returnTotals.totalTjReturn);
                                             const percent = totalOwed > 0 ? (monthOwed / totalOwed * 100).toFixed(1) : 0;
                                             return (
                                                 <div key={month.month}>
@@ -3512,7 +3512,7 @@
                                     <div className="space-y-2">
                                         {monthlyTotals.slice(-6).map((month) => {
                                             const monthOwed = Math.max(0, month.joshOwed);
-                                            const totalOwed = Math.max(0, joshTotals.owed);
+                                            const totalOwed = Math.max(0, joshTotals.owed - returnTotals.totalJoshReturn);
                                             const percent = totalOwed > 0 ? (monthOwed / totalOwed * 100).toFixed(1) : 0;
                                             return (
                                                 <div key={month.month}>
