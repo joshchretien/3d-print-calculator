@@ -174,6 +174,11 @@ PORT=3000
 
 ## 🔄 Version History
 
+### v1.8.3 - Return Payout Persistence Fix (January 2025)
+- ✅ **Database Persistence for returnPayoutId**: Added `returnPayoutId` column to database schema
+- ✅ **Return-Payout Association**: Returns included in payouts now persist across page refreshes
+- ✅ **Migration Support**: Added migration to add `returnPayoutId` column to existing databases
+
 ### v1.8.2 - Returns Management Fixes (January 2025)
 - ✅ **Fixed Automatic Returns Subtraction**: Removed automatic returns subtraction from past payouts
 - ✅ **Returns Only When Explicitly Included**: Returns are only subtracted when explicitly checked in payout confirmation
