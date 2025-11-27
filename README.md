@@ -174,6 +174,17 @@ PORT=3000
 
 ## 🔄 Version History
 
+### v1.8.1 - Enhanced Payout Workflow & Returns Management (January 2025)
+- ✅ **Shift-Click Selection**: Select multiple orders by clicking first order, then shift-clicking last order to select range
+- ✅ **Payout Confirmation Modal**: Comprehensive payout summary modal before processing payouts
+- ✅ **Payout Summary Display**: Shows total orders, Etsy payout, shipping costs, production costs, and final TJ/Josh payouts
+- ✅ **Pending Return Subtractions**: Renamed Returns section to "Pending Return Subtractions" for clarity
+- ✅ **Optional Returns Inclusion**: Checkbox in payout modal to include/exclude pending returns from current payout
+- ✅ **Returns Tracking**: Returns automatically removed from pending list when included in a payout
+- ✅ **Dynamic Payout Button**: "Mark Selected Paid" button shows order count and TJ payout amount in real-time
+- ✅ **Calculation Fixes**: Fixed payout calculations to correctly handle returns and base amounts
+- ✅ **Returns Persistence**: Returns are tracked with payout IDs to prevent double-counting
+
 ### v1.8.0 - Reports Tab & Enhanced Analytics (January 2025)
 - ✅ **Comprehensive Reports Tab**: New dedicated reporting section with Summary, TJ, and Josh breakdowns
 - ✅ **Date Range Filtering**: Monthly (default), Today, Yesterday, Last 7/14/30 Days, This Month/Year
