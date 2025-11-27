@@ -1204,6 +1204,18 @@
                 });
                 return { totalTjReturn, totalJoshReturn };
             }, [returnedOrders]);
+            
+            // Calculate total TJ payout for selected orders (minus returns)
+            const selectedOrdersTjPayout = useMemo(() => {
+                if (selectedOrderIds.size === 0) return 0;
+                const selectedOrders = orders.filter(o => selectedOrderIds.has(o.id) && o.status === 'Unpaid');
+                let totalTjShare = 0;
+                selectedOrders.forEach(order => {
+                    totalTjShare += order.tjShare || 0;
+                });
+                // Subtract returns from the total
+                return Math.max(0, totalTjShare - returnTotals.totalTjReturn);
+            }, [selectedOrderIds, orders, returnTotals]);
 
             // Group paid orders by payoutId (each bulk mark paid creates a separate payout)
             const payoutsByDate = useMemo(() => {
@@ -2565,7 +2577,7 @@
                                     }`}
                                     disabled={selectedOrderIds.size === 0}
                                 >
-                                    Mark Selected Paid ({selectedOrderIds.size})
+                                    Mark Selected Paid ({selectedOrderIds.size} orders - TJ: {utils.money(selectedOrdersTjPayout)})
                                 </button>
                             </div>
                         </div>
