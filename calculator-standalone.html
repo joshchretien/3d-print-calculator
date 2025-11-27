@@ -1218,16 +1218,31 @@
                             totalEtsyPayout: 0,
                             totalTjShare: 0,
                             totalJoshShare: 0,
-                            totalProductionCost: 0
+                            totalProductionCost: 0,
+                            totalTjReturn: 0,
+                            totalJoshReturn: 0
                         };
                     }
                     grouped[payoutKey].orders.push(order);
                     grouped[payoutKey].totalEtsyPayout += order.etsyPayout || 0;
-                    grouped[payoutKey].totalTjShare += order.tjShare || 0;
-                    grouped[payoutKey].totalJoshShare += order.joshShare || 0;
+                    
+                    // If order is returned, track returns separately and don't add to shares
+                    if (order.returned) {
+                        grouped[payoutKey].totalTjReturn += order.tjShare || 0;
+                        grouped[payoutKey].totalJoshReturn += order.joshShare || 0;
+                    } else {
+                        grouped[payoutKey].totalTjShare += order.tjShare || 0;
+                        grouped[payoutKey].totalJoshShare += order.joshShare || 0;
+                    }
                     grouped[payoutKey].totalProductionCost += order.productionCost || 0;
                 });
-                return Object.values(grouped).sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                // Calculate final totals by subtracting returns from shares
+                return Object.values(grouped).map(payout => ({
+                    ...payout,
+                    totalTjShare: Math.max(0, payout.totalTjShare - payout.totalTjReturn),
+                    totalJoshShare: Math.max(0, payout.totalJoshShare - payout.totalJoshReturn)
+                })).sort((a, b) => new Date(b.date) - new Date(a.date));
             }, [paidOrders]);
 
             const bulkMarkPaid = useCallback(() => {
@@ -2728,9 +2743,15 @@
                                                     </span>
                                                     <span className="text-green-600 font-medium">
                                                         TJ: {utils.money(payout.totalTjShare)}
+                                                        {payout.totalTjReturn > 0 && (
+                                                            <span className="text-red-600 ml-1">(-{utils.money(payout.totalTjReturn)})</span>
+                                                        )}
                                                     </span>
                                                     <span className="text-green-600 font-medium">
                                                         Josh: {utils.money(payout.totalJoshShare)}
+                                                        {payout.totalJoshReturn > 0 && (
+                                                            <span className="text-red-600 ml-1">(-{utils.money(payout.totalJoshReturn)})</span>
+                                                        )}
                                                     </span>
                                                     <span className="text-gray-600">
                                                         Production: {utils.money(payout.totalProductionCost)}
