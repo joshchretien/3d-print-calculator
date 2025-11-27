@@ -3050,14 +3050,15 @@
                 };
             }, [filteredOrders]);
             
-            // TJ totals - only orders where maker is TJ
+            // TJ totals - only orders where maker is TJ (or undefined/null defaults to TJ for legacy orders)
             const tjOrders = useMemo(() => {
-                return filteredOrders.filter(o => o.maker === 'TJ');
+                return filteredOrders.filter(o => !o.maker || o.maker === 'TJ');
             }, [filteredOrders]);
             
             const tjTotals = useMemo(() => {
                 const tjEarned = filteredOrders.reduce((sum, o) => sum + (o.tjShare || 0), 0);
                 const tjPaid = filteredOrders.filter(o => o.status === 'Paid').reduce((sum, o) => sum + (o.tjShare || 0), 0);
+                // Production cost only for orders where maker is TJ (or undefined/null for legacy)
                 const tjProductionCost = tjOrders.reduce((sum, o) => sum + (o.productionCost || 0), 0);
                 
                 // Count orders by source for TJ
@@ -3085,6 +3086,7 @@
             const joshTotals = useMemo(() => {
                 const joshEarned = filteredOrders.reduce((sum, o) => sum + (o.joshShare || 0), 0);
                 const joshPaid = filteredOrders.filter(o => o.status === 'Paid').reduce((sum, o) => sum + (o.joshShare || 0), 0);
+                // Production cost only for orders where maker is Josh
                 const joshProductionCost = joshOrders.reduce((sum, o) => sum + (o.productionCost || 0), 0);
                 
                 // Count orders by source for Josh
