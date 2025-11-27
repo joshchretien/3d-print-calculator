@@ -1052,31 +1052,25 @@
             // Ensure orders array exists
             const orders = state.orders || [];
             
-            const toggleOrderSelection = useCallback((orderId, currentIndex, event) => {
+            const toggleOrderSelection = useCallback((orderId, currentIndex, event, sortedOrders) => {
                 setSelectedOrderIds(prev => {
                     const newSet = new Set(prev);
                     
                     // Check if shift key is pressed and we have a previous selection
-                    if (event && event.shiftKey && lastSelectedOrderIndex !== null) {
+                    if (event && event.shiftKey && lastSelectedOrderIndex !== null && sortedOrders) {
                         // Select range between lastSelectedOrderIndex and currentIndex
                         const startIndex = Math.min(lastSelectedOrderIndex, currentIndex);
                         const endIndex = Math.max(lastSelectedOrderIndex, currentIndex);
-                        const unpaidOrders = orders.filter(o => o.status === 'Unpaid');
-                        const sortedUnpaid = [...unpaidOrders].sort((a, b) => {
-                            const dateA = new Date(a.createdOn || 0);
-                            const dateB = new Date(b.createdOn || 0);
-                            return dateB - dateA;
-                        });
                         
                         // Determine if we're selecting or deselecting based on the current checkbox state
                         const isCurrentlySelected = newSet.has(orderId);
                         
                         for (let i = startIndex; i <= endIndex; i++) {
-                            if (sortedUnpaid[i]) {
+                            if (sortedOrders[i]) {
                                 if (isCurrentlySelected) {
-                                    newSet.delete(sortedUnpaid[i].id);
+                                    newSet.delete(sortedOrders[i].id);
                                 } else {
-                                    newSet.add(sortedUnpaid[i].id);
+                                    newSet.add(sortedOrders[i].id);
                                 }
                             }
                         }
@@ -1094,7 +1088,7 @@
                 
                 // Update last selected index
                 setLastSelectedOrderIndex(currentIndex);
-            }, [lastSelectedOrderIndex, orders]);
+            }, [lastSelectedOrderIndex]);
 
             const togglePayoutOrderSelection = useCallback((orderId) => {
                 setSelectedPayoutOrderIds(prev => {
@@ -2501,6 +2495,7 @@
                                     onClick={() => {
                                         const unpaidOrders = orders.filter(o => o.status === 'Unpaid');
                                         setSelectedOrderIds(new Set(unpaidOrders.map(o => o.id)));
+                                        setLastSelectedOrderIndex(null);
                                     }}
                                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-200"
                                 >
