@@ -1026,6 +1026,8 @@
             const [lastSelectedOrderIndex, setLastSelectedOrderIndex] = useState(null);
             const [showEditSplit, setShowEditSplit] = useState(false);
             const [selectedTjSharePercentage, setSelectedTjSharePercentage] = useState("");
+            const [showPayoutConfirmation, setShowPayoutConfirmation] = useState(false);
+            const [payoutSummary, setPayoutSummary] = useState(null);
             const [maker, setMaker] = useState("TJ");
             const [source, setSource] = useState("Etsy");
             const [orderNumber, setOrderNumber] = useState("");
@@ -1057,7 +1059,8 @@
                     const newSet = new Set(prev);
                     
                     // Check if shift key is pressed and we have a previous selection
-                    if (event && event.shiftKey && lastSelectedOrderIndex !== null && sortedOrders) {
+                    const isShiftPressed = event && (event.shiftKey || (event.nativeEvent && event.nativeEvent.shiftKey));
+                    if (isShiftPressed && lastSelectedOrderIndex !== null && sortedOrders) {
                         // Select range between lastSelectedOrderIndex and currentIndex
                         const startIndex = Math.min(lastSelectedOrderIndex, currentIndex);
                         const endIndex = Math.max(lastSelectedOrderIndex, currentIndex);
@@ -1248,13 +1251,51 @@
                     alert("Please select at least one order to mark as paid");
                     return;
                 }
-                if (confirm(`Are you sure you want to mark ${selectedOrderIds.size} order(s) as paid?`)) {
-                    const currentTime = utils.now();
-                    const payoutId = utils.uid(); // Generate unique ID for this payout batch
-                    dispatch({ type: ACTIONS.BULK_MARK_PAID, ids: Array.from(selectedOrderIds), paidOn: currentTime, payoutId: payoutId });
-                    setSelectedOrderIds(new Set());
-                    setLastSelectedOrderIndex(null);
+                
+                // Calculate payout summary
+                const selectedOrders = orders.filter(o => selectedOrderIds.has(o.id));
+                let totalTjShare = 0;
+                let totalJoshShare = 0;
+                let totalEtsyPayout = 0;
+                let totalProductionCost = 0;
+                let totalShippingCost = 0;
+                
+                selectedOrders.forEach(order => {
+                    totalTjShare += order.tjShare || 0;
+                    totalJoshShare += order.joshShare || 0;
+                    totalEtsyPayout += order.etsyPayout || 0;
+                    totalProductionCost += order.productionCost || 0;
+                    totalShippingCost += order.shippingCost || 0;
+                });
+                
+                // Subtract returns from totals
+                const finalTjShare = Math.max(0, totalTjShare - returnTotals.totalTjReturn);
+                const finalJoshShare = Math.max(0, totalJoshShare - returnTotals.totalJoshReturn);
+                
+                setPayoutSummary({
+                    totalOrders: selectedOrderIds.size,
+                    totalEtsyPayout,
+                    totalTjShare: finalTjShare,
+                    totalJoshShare: finalJoshShare,
+                    totalProductionCost,
+                    totalShippingCost,
+                    returnsTj: returnTotals.totalTjReturn,
+                    returnsJosh: returnTotals.totalJoshReturn
+                });
+                setShowPayoutConfirmation(true);
+            }, [selectedOrderIds, orders, returnTotals]);
+            
+            const confirmPayout = useCallback(() => {
+                if (selectedOrderIds.size === 0) {
+                    return;
                 }
+                const currentTime = utils.now();
+                const payoutId = utils.uid(); // Generate unique ID for this payout batch
+                dispatch({ type: ACTIONS.BULK_MARK_PAID, ids: Array.from(selectedOrderIds), paidOn: currentTime, payoutId: payoutId });
+                setSelectedOrderIds(new Set());
+                setLastSelectedOrderIndex(null);
+                setShowPayoutConfirmation(false);
+                setPayoutSummary(null);
             }, [selectedOrderIds, dispatch]);
 
             const addOrder = useCallback(() => {
@@ -2528,6 +2569,80 @@
                                 </button>
                             </div>
                         </div>
+                        
+                        {/* Payout Confirmation Modal */}
+                        {showPayoutConfirmation && payoutSummary && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-xl shadow-2xl p-8 max-w-2xl w-full mx-4">
+                                    <h3 className="text-2xl font-bold text-gray-800 mb-6">Confirm Payout</h3>
+                                    <p className="text-gray-600 mb-6">Are you sure you want to process this payout?</p>
+                                    
+                                    <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                                        <h4 className="text-lg font-semibold text-gray-800 mb-4">Payout Summary</h4>
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-700">Total Orders:</span>
+                                                <span className="font-semibold text-gray-800">{payoutSummary.totalOrders}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-700">Total Etsy Payout:</span>
+                                                <span className="font-semibold text-green-600">{utils.money(payoutSummary.totalEtsyPayout)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-700">Total Shipping Cost:</span>
+                                                <span className="font-semibold text-red-600">-{utils.money(payoutSummary.totalShippingCost)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-700">Total Production Cost:</span>
+                                                <span className="font-semibold text-gray-600">{utils.money(payoutSummary.totalProductionCost)}</span>
+                                            </div>
+                                            {payoutSummary.returnsTj > 0 || payoutSummary.returnsJosh > 0 ? (
+                                                <>
+                                                    <div className="border-t border-gray-300 pt-3 mt-3">
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <span className="text-gray-700">Returns (TJ):</span>
+                                                            <span className="font-semibold text-red-600">-{utils.money(payoutSummary.returnsTj)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-gray-700">Returns (Josh):</span>
+                                                            <span className="font-semibold text-red-600">-{utils.money(payoutSummary.returnsJosh)}</span>
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            ) : null}
+                                            <div className="border-t-2 border-gray-400 pt-3 mt-3">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <span className="text-lg font-semibold text-gray-800">Payout to TJ:</span>
+                                                    <span className="text-xl font-bold text-green-600">{utils.money(payoutSummary.totalTjShare)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-lg font-semibold text-gray-800">Payout to Josh:</span>
+                                                    <span className="text-xl font-bold text-green-600">{utils.money(payoutSummary.totalJoshShare)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex justify-end gap-3">
+                                        <button
+                                            onClick={() => {
+                                                setShowPayoutConfirmation(false);
+                                                setPayoutSummary(null);
+                                            }}
+                                            className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors duration-200"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={confirmPayout}
+                                            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-200"
+                                        >
+                                            Confirm Payout
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Edit Split Dropdown */}
                         {showEditSplit && selectedOrderIds.size > 0 && (
