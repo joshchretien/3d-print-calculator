@@ -2601,7 +2601,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {sortedUnpaidOrders.map((order) => {
+                                            {sortedUnpaidOrders.map((order, orderIndex) => {
                                                 const orderItems = order.items || [{ productTitle: order.product || 'Legacy Product', count: order.count || 0, quantity: 1 }];
                                                 return orderItems.map((item, itemIndex) => (
                                                     <tr key={`${order.id}-${itemIndex}`} className={`border-b transition-colors ${
@@ -2615,7 +2615,7 @@
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={selectedOrderIds.has(order.id)}
-                                                                    onChange={() => toggleOrderSelection(order.id)}
+                                                                    onChange={(e) => toggleOrderSelection(order.id, orderIndex, e)}
                                                                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                                                 />
                                                             )}
