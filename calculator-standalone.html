@@ -1218,32 +1218,30 @@
                             totalEtsyPayout: 0,
                             totalTjShare: 0,
                             totalJoshShare: 0,
-                            totalProductionCost: 0,
-                            totalTjReturn: 0,
-                            totalJoshReturn: 0
+                            totalProductionCost: 0
                         };
                     }
                     grouped[payoutKey].orders.push(order);
                     grouped[payoutKey].totalEtsyPayout += order.etsyPayout || 0;
-                    
-                    // If order is returned, track returns separately and don't add to shares
-                    if (order.returned) {
-                        grouped[payoutKey].totalTjReturn += order.tjShare || 0;
-                        grouped[payoutKey].totalJoshReturn += order.joshShare || 0;
-                    } else {
-                        grouped[payoutKey].totalTjShare += order.tjShare || 0;
-                        grouped[payoutKey].totalJoshShare += order.joshShare || 0;
-                    }
+                    grouped[payoutKey].totalTjShare += order.tjShare || 0;
+                    grouped[payoutKey].totalJoshShare += order.joshShare || 0;
                     grouped[payoutKey].totalProductionCost += order.productionCost || 0;
                 });
                 
-                // Calculate final totals by subtracting returns from shares
-                return Object.values(grouped).map(payout => ({
-                    ...payout,
-                    totalTjShare: Math.max(0, payout.totalTjShare - payout.totalTjReturn),
-                    totalJoshShare: Math.max(0, payout.totalJoshShare - payout.totalJoshReturn)
-                })).sort((a, b) => new Date(b.date) - new Date(a.date));
-            }, [paidOrders]);
+                const sortedPayouts = Object.values(grouped).sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                // Subtract returns from the most recent payout (the one that was just processed)
+                // Returns should only affect the next payout, which is the most recent one
+                if (sortedPayouts.length > 0 && returnTotals.totalTjReturn > 0 || returnTotals.totalJoshReturn > 0) {
+                    const mostRecentPayout = sortedPayouts[0];
+                    mostRecentPayout.totalTjShare = Math.max(0, mostRecentPayout.totalTjShare - returnTotals.totalTjReturn);
+                    mostRecentPayout.totalJoshShare = Math.max(0, mostRecentPayout.totalJoshShare - returnTotals.totalJoshReturn);
+                    mostRecentPayout.totalTjReturn = returnTotals.totalTjReturn;
+                    mostRecentPayout.totalJoshReturn = returnTotals.totalJoshReturn;
+                }
+                
+                return sortedPayouts;
+            }, [paidOrders, returnTotals]);
 
             const bulkMarkPaid = useCallback(() => {
                 if (selectedOrderIds.size === 0) {
