@@ -619,7 +619,6 @@ const saveDataToDatabase = (data) => {
                         order.items ? JSON.stringify(order.items) : null,
                         order.returned ? 1 : 0,
                         order.maker || null
-                        order.maker || null
                     );
                 });
                 insertOrder.finalize((err) => {
