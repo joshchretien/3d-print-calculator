@@ -230,6 +230,7 @@
             EDIT_SPLIT: "EDIT_SPLIT",
             MARK_AS_RETURNED: "MARK_AS_RETURNED",
             UNMARK_AS_RETURNED: "UNMARK_AS_RETURNED",
+            MARK_RETURNS_INCLUDED: "MARK_RETURNS_INCLUDED",
             INITIALIZE: "INITIALIZE"
         };
 
@@ -275,7 +276,9 @@
                 case ACTIONS.MARK_AS_RETURNED:
                     return { ...state, orders: state.orders.map((o) => o.id === action.id ? { ...o, returned: true } : o) };
                 case ACTIONS.UNMARK_AS_RETURNED:
-                    return { ...state, orders: state.orders.map((o) => o.id === action.id ? { ...o, returned: false } : o) };
+                    return { ...state, orders: state.orders.map((o) => o.id === action.id ? { ...o, returned: false, returnPayoutId: null } : o) };
+                case ACTIONS.MARK_RETURNS_INCLUDED:
+                    return { ...state, orders: state.orders.map((o) => action.ids.includes(o.id) ? { ...o, returnPayoutId: action.payoutId } : o) };
                 case ACTIONS.EDIT_SPLIT:
                     return { ...state, orders: state.orders.map((o) => {
                         if (action.ids.includes(o.id)) {
@@ -1028,6 +1031,7 @@
             const [selectedTjSharePercentage, setSelectedTjSharePercentage] = useState("");
             const [showPayoutConfirmation, setShowPayoutConfirmation] = useState(false);
             const [payoutSummary, setPayoutSummary] = useState(null);
+            const [includeReturnsInPayout, setIncludeReturnsInPayout] = useState(true);
             const [maker, setMaker] = useState("TJ");
             const [source, setSource] = useState("Etsy");
             const [orderNumber, setOrderNumber] = useState("");
@@ -1189,9 +1193,9 @@
                 });
             }, []);
 
-            // Get all returned orders (both paid and unpaid)
+            // Get all returned orders that haven't been included in a payout yet
             const returnedOrders = useMemo(() => {
-                return orders.filter(order => order.returned === true);
+                return orders.filter(order => order.returned === true && !order.returnPayoutId);
             }, [orders]);
 
             // Calculate return totals from all returned orders (only TJ and Josh shares, not shipping)
@@ -1205,7 +1209,7 @@
                 return { totalTjReturn, totalJoshReturn };
             }, [returnedOrders]);
             
-            // Calculate total TJ payout for selected orders (minus returns)
+            // Calculate total TJ payout for selected orders (base amount, no returns subtracted)
             const selectedOrdersTjPayout = useMemo(() => {
                 if (selectedOrderIds.size === 0) return 0;
                 const selectedOrders = orders.filter(o => selectedOrderIds.has(o.id) && o.status === 'Unpaid');
@@ -1213,9 +1217,8 @@
                 selectedOrders.forEach(order => {
                     totalTjShare += order.tjShare || 0;
                 });
-                // Subtract returns from the total
-                return Math.max(0, totalTjShare - returnTotals.totalTjReturn);
-            }, [selectedOrderIds, orders, returnTotals]);
+                return totalTjShare;
+            }, [selectedOrderIds, orders]);
 
             // Group paid orders by payoutId (each bulk mark paid creates a separate payout)
             const payoutsByDate = useMemo(() => {
@@ -1280,22 +1283,17 @@
                     totalShippingCost += order.shippingCost || 0;
                 });
                 
-                // Subtract returns from totals
-                const finalTjShare = Math.max(0, totalTjShare - returnTotals.totalTjReturn);
-                const finalJoshShare = Math.max(0, totalJoshShare - returnTotals.totalJoshReturn);
-                
+                // Store base amounts (returns will be subtracted conditionally in the modal)
                 setPayoutSummary({
                     totalOrders: selectedOrderIds.size,
                     totalEtsyPayout,
-                    totalTjShare: finalTjShare,
-                    totalJoshShare: finalJoshShare,
+                    totalTjShare: totalTjShare,
+                    totalJoshShare: totalJoshShare,
                     totalProductionCost,
-                    totalShippingCost,
-                    returnsTj: returnTotals.totalTjReturn,
-                    returnsJosh: returnTotals.totalJoshReturn
+                    totalShippingCost
                 });
                 setShowPayoutConfirmation(true);
-            }, [selectedOrderIds, orders, returnTotals]);
+            }, [selectedOrderIds, orders]);
             
             const confirmPayout = useCallback(() => {
                 if (selectedOrderIds.size === 0) {
@@ -1303,12 +1301,22 @@
                 }
                 const currentTime = utils.now();
                 const payoutId = utils.uid(); // Generate unique ID for this payout batch
+                
+                // Mark selected orders as paid
                 dispatch({ type: ACTIONS.BULK_MARK_PAID, ids: Array.from(selectedOrderIds), paidOn: currentTime, payoutId: payoutId });
+                
+                // If returns are included, mark them as included in this payout
+                if (includeReturnsInPayout && returnedOrders.length > 0) {
+                    const returnOrderIds = returnedOrders.map(o => o.id);
+                    dispatch({ type: ACTIONS.MARK_RETURNS_INCLUDED, ids: returnOrderIds, payoutId: payoutId });
+                }
+                
                 setSelectedOrderIds(new Set());
                 setLastSelectedOrderIndex(null);
                 setShowPayoutConfirmation(false);
                 setPayoutSummary(null);
-            }, [selectedOrderIds, dispatch]);
+                setIncludeReturnsInPayout(true);
+            }, [selectedOrderIds, dispatch, includeReturnsInPayout, returnedOrders]);
 
             const addOrder = useCallback(() => {
                 if (!orderNumber.trim() || !etsyPayout || !shippingCost) {
@@ -2469,12 +2477,12 @@
                         </div>
                     )}
 
-                    {/* Returns Section */}
+                    {/* Pending Return Subtractions Section */}
                     {returnedOrders.length > 0 && (
                         <div className="mb-6 bg-red-50 rounded-xl shadow-lg border border-red-200 p-6">
-                            <h3 className="text-lg font-semibold mb-4 text-red-600">Returns</h3>
+                            <h3 className="text-lg font-semibold mb-4 text-red-600">Pending Return Subtractions</h3>
                             <p className="text-sm text-gray-600 mb-4">
-                                These returned orders will subtract from the next payout. Total Returns: TJ {utils.money(returnTotals.totalTjReturn)} | Josh {utils.money(returnTotals.totalJoshReturn)}
+                                These returned orders are pending subtraction from a payout. Total Pending: TJ {utils.money(returnTotals.totalTjReturn)} | Josh {utils.money(returnTotals.totalJoshReturn)}
                             </p>
                             <div className="overflow-x-auto -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
                                 <table className="w-full text-sm" style={{ minWidth: '1200px' }}>
@@ -2625,11 +2633,21 @@
                                             <div className="border-t-2 border-gray-400 pt-3 mt-3">
                                                 <div className="flex justify-between items-center mb-2">
                                                     <span className="text-lg font-semibold text-gray-800">Payout to TJ:</span>
-                                                    <span className="text-xl font-bold text-green-600">{utils.money(payoutSummary.totalTjShare)}</span>
+                                                    <span className="text-xl font-bold text-green-600">
+                                                        {utils.money(includeReturnsInPayout ? payoutSummary.totalTjShare : payoutSummary.totalTjShare + returnTotals.totalTjReturn)}
+                                                        {includeReturnsInPayout && returnTotals.totalTjReturn > 0 && (
+                                                            <span className="text-sm text-red-600 ml-2">(includes returns)</span>
+                                                        )}
+                                                    </span>
                                                 </div>
                                                 <div className="flex justify-between items-center">
                                                     <span className="text-lg font-semibold text-gray-800">Payout to Josh:</span>
-                                                    <span className="text-xl font-bold text-green-600">{utils.money(payoutSummary.totalJoshShare)}</span>
+                                                    <span className="text-xl font-bold text-green-600">
+                                                        {utils.money(includeReturnsInPayout ? payoutSummary.totalJoshShare : payoutSummary.totalJoshShare + returnTotals.totalJoshReturn)}
+                                                        {includeReturnsInPayout && returnTotals.totalJoshReturn > 0 && (
+                                                            <span className="text-sm text-red-600 ml-2">(includes returns)</span>
+                                                        )}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
