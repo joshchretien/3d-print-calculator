@@ -55,7 +55,8 @@ const initDatabase = () => {
                 source TEXT,
                 payoutId TEXT,
                 items TEXT,
-                returned INTEGER DEFAULT 0
+                returned INTEGER DEFAULT 0,
+                maker TEXT
             )`);
             
             // Add returned column to existing orders table if it doesn't exist (migration)
@@ -65,6 +66,16 @@ const initDatabase = () => {
                     // Only log if it's not the expected "duplicate column" error
                     if (!err.message.toLowerCase().includes('duplicate')) {
                         console.warn('Could not add returned column (may already exist):', err.message);
+                    }
+                }
+            });
+            
+            // Add maker column to existing orders table if it doesn't exist (migration)
+            db.run(`ALTER TABLE orders ADD COLUMN maker TEXT`, (err) => {
+                // Ignore error if column already exists
+                if (err && !err.message.includes('duplicate column name')) {
+                    if (!err.message.toLowerCase().includes('duplicate')) {
+                        console.warn('Could not add maker column (may already exist):', err.message);
                     }
                 }
             });
@@ -409,10 +420,13 @@ const getDataFromDatabase = () => {
                     // Get packaging options
                     db.all("SELECT name FROM packagingOptions", (err, packaging) => {
                         if (err) {
-                            reject(err);
-                            return;
+                            console.warn('Error fetching packaging options, using defaults:', err);
+                            data.packagingOptions = ["WT-ENV", "OR-ENV", "BLK-ENV", "6x6x6", "7x7x7", "9x9x9", "18x12x2", "18x12x4"];
+                        } else {
+                            data.packagingOptions = packaging && packaging.length > 0 
+                                ? packaging.map(p => p.name) 
+                                : ["WT-ENV", "OR-ENV", "BLK-ENV", "6x6x6", "7x7x7", "9x9x9", "18x12x2", "18x12x4"];
                         }
-                        data.packagingOptions = packaging.map(p => p.name);
 
                         // Get roll costs
                         db.all("SELECT * FROM rollCosts", (err, rollCosts) => {
@@ -455,7 +469,8 @@ const getDataFromDatabase = () => {
                                         data.orders = orders.map(order => ({
                                             ...order,
                                             items: order.items ? JSON.parse(order.items) : undefined,
-                                            returned: order.returned === 1 || order.returned === true || false
+                                            returned: order.returned === 1 || order.returned === true || false,
+                                            maker: order.maker || null
                                         }));
 
                                         // Get global discount
@@ -582,8 +597,8 @@ const saveDataToDatabase = (data) => {
             if (data.orders && data.orders.length > 0) {
                 operationsCount++;
                 const insertOrder = db.prepare(`INSERT INTO orders 
-                    (id, orderNumber, product, count, etsyPayout, shippingCost, productionCost, tjShare, joshShare, status, createdOn, paidOn, source, payoutId, items, returned)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+                    (id, orderNumber, product, count, etsyPayout, shippingCost, productionCost, tjShare, joshShare, status, createdOn, paidOn, source, payoutId, items, returned, maker)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 
                 data.orders.forEach(order => {
                     insertOrder.run(
@@ -602,7 +617,9 @@ const saveDataToDatabase = (data) => {
                         order.source,
                         order.payoutId,
                         order.items ? JSON.stringify(order.items) : null,
-                        order.returned ? 1 : 0
+                        order.returned ? 1 : 0,
+                        order.maker || null
+                        order.maker || null
                     );
                 });
                 insertOrder.finalize((err) => {
