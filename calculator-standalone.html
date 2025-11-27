@@ -1240,6 +1240,7 @@
                     const payoutId = utils.uid(); // Generate unique ID for this payout batch
                     dispatch({ type: ACTIONS.BULK_MARK_PAID, ids: Array.from(selectedOrderIds), paidOn: currentTime, payoutId: payoutId });
                     setSelectedOrderIds(new Set());
+                    setLastSelectedOrderIndex(null);
                 }
             }, [selectedOrderIds, dispatch]);
 
