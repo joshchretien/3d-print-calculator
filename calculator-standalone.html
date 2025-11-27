@@ -2952,10 +2952,20 @@
                             tjPaid: 0,
                             joshEarned: 0,
                             joshPaid: 0,
+                            tjProductionCost: 0,
+                            joshProductionCost: 0,
                             productionCost: 0,
                             shippingCost: 0,
                             totalPayout: 0,
                             orders: 0,
+                            tjOrders: 0,
+                            joshOrders: 0,
+                            tjEtsyOrders: 0,
+                            tjWebsiteOrders: 0,
+                            tjEbayOrders: 0,
+                            joshEtsyOrders: 0,
+                            joshWebsiteOrders: 0,
+                            joshEbayOrders: 0,
                             etsyOrders: 0,
                             websiteOrders: 0,
                             ebayOrders: 0
@@ -2966,8 +2976,32 @@
                     monthly[monthKey].joshEarned += order.joshShare || 0;
                     monthly[monthKey].productionCost += order.productionCost || 0;
                     monthly[monthKey].shippingCost += order.shippingCost || 0;
-                    monthly[monthKey].totalPayout += order.etsyPayout || 0;
+                    // Total payout = TJ share + Josh share (no need to subtract shipping as it's already excluded)
+                    monthly[monthKey].totalPayout += (order.tjShare || 0) + (order.joshShare || 0);
                     monthly[monthKey].orders += 1;
+                    
+                    // Track production costs by maker
+                    if (order.maker === 'TJ') {
+                        monthly[monthKey].tjProductionCost += order.productionCost || 0;
+                        monthly[monthKey].tjOrders += 1;
+                        if (order.source === 'Etsy' || !order.source) {
+                            monthly[monthKey].tjEtsyOrders += 1;
+                        } else if (order.source === 'Website') {
+                            monthly[monthKey].tjWebsiteOrders += 1;
+                        } else if (order.source === 'eBay') {
+                            monthly[monthKey].tjEbayOrders += 1;
+                        }
+                    } else if (order.maker === 'Josh') {
+                        monthly[monthKey].joshProductionCost += order.productionCost || 0;
+                        monthly[monthKey].joshOrders += 1;
+                        if (order.source === 'Etsy' || !order.source) {
+                            monthly[monthKey].joshEtsyOrders += 1;
+                        } else if (order.source === 'Website') {
+                            monthly[monthKey].joshWebsiteOrders += 1;
+                        } else if (order.source === 'eBay') {
+                            monthly[monthKey].joshEbayOrders += 1;
+                        }
+                    }
                     
                     if (order.status === 'Paid') {
                         monthly[monthKey].tjPaid += order.tjShare || 0;
@@ -2999,38 +3033,76 @@
                 const ebayCount = filteredOrders.filter(o => o.source === 'eBay').length;
                 const totalOrders = filteredOrders.length;
                 
+                // Total payouts = TJ shares + Josh shares (minus shipping, which doesn't get paid to anyone)
+                const totalTjShares = filteredOrders.reduce((sum, o) => sum + (o.tjShare || 0), 0);
+                const totalJoshShares = filteredOrders.reduce((sum, o) => sum + (o.joshShare || 0), 0);
+                const totalShipping = filteredOrders.reduce((sum, o) => sum + (o.shippingCost || 0), 0);
+                const totalPayouts = totalTjShares + totalJoshShares; // Already excludes shipping in the calculation
+                
                 return {
                     totalOrders,
                     etsyCount,
                     websiteCount,
                     ebayCount,
-                    totalPayouts: filteredOrders.reduce((sum, o) => sum + (o.etsyPayout || 0), 0),
-                    totalShipping: filteredOrders.reduce((sum, o) => sum + (o.shippingCost || 0), 0),
+                    totalPayouts,
+                    totalShipping,
                     totalProductionCost: filteredOrders.reduce((sum, o) => sum + (o.productionCost || 0), 0)
                 };
             }, [filteredOrders]);
             
-            // TJ totals
+            // TJ totals - only orders where maker is TJ
+            const tjOrders = useMemo(() => {
+                return filteredOrders.filter(o => o.maker === 'TJ');
+            }, [filteredOrders]);
+            
             const tjTotals = useMemo(() => {
+                const tjEarned = filteredOrders.reduce((sum, o) => sum + (o.tjShare || 0), 0);
+                const tjPaid = filteredOrders.filter(o => o.status === 'Paid').reduce((sum, o) => sum + (o.tjShare || 0), 0);
+                const tjProductionCost = tjOrders.reduce((sum, o) => sum + (o.productionCost || 0), 0);
+                
+                // Count orders by source for TJ
+                const etsyCount = tjOrders.filter(o => o.source === 'Etsy' || !o.source).length;
+                const websiteCount = tjOrders.filter(o => o.source === 'Website').length;
+                const ebayCount = tjOrders.filter(o => o.source === 'eBay').length;
+                
                 return {
-                    earned: filteredOrders.reduce((sum, o) => sum + (o.tjShare || 0), 0),
-                    paid: filteredOrders.filter(o => o.status === 'Paid').reduce((sum, o) => sum + (o.tjShare || 0), 0),
-                    productionCost: filteredOrders.reduce((sum, o) => sum + (o.productionCost || 0), 0)
+                    earned: tjEarned,
+                    paid: tjPaid,
+                    owed: tjEarned - tjPaid,
+                    productionCost: tjProductionCost,
+                    totalOrders: tjOrders.length,
+                    etsyOrders: etsyCount,
+                    websiteOrders: websiteCount,
+                    ebayOrders: ebayCount
                 };
+            }, [filteredOrders, tjOrders]);
+            
+            // Josh totals - only orders where maker is Josh
+            const joshOrders = useMemo(() => {
+                return filteredOrders.filter(o => o.maker === 'Josh');
             }, [filteredOrders]);
             
-            tjTotals.owed = tjTotals.earned - tjTotals.paid;
-            
-            // Josh totals
             const joshTotals = useMemo(() => {
+                const joshEarned = filteredOrders.reduce((sum, o) => sum + (o.joshShare || 0), 0);
+                const joshPaid = filteredOrders.filter(o => o.status === 'Paid').reduce((sum, o) => sum + (o.joshShare || 0), 0);
+                const joshProductionCost = joshOrders.reduce((sum, o) => sum + (o.productionCost || 0), 0);
+                
+                // Count orders by source for Josh
+                const etsyCount = joshOrders.filter(o => o.source === 'Etsy' || !o.source).length;
+                const websiteCount = joshOrders.filter(o => o.source === 'Website').length;
+                const ebayCount = joshOrders.filter(o => o.source === 'eBay').length;
+                
                 return {
-                    earned: filteredOrders.reduce((sum, o) => sum + (o.joshShare || 0), 0),
-                    paid: filteredOrders.filter(o => o.status === 'Paid').reduce((sum, o) => sum + (o.joshShare || 0), 0),
-                    productionCost: filteredOrders.reduce((sum, o) => sum + (o.productionCost || 0), 0)
+                    earned: joshEarned,
+                    paid: joshPaid,
+                    owed: joshEarned - joshPaid,
+                    productionCost: joshProductionCost,
+                    totalOrders: joshOrders.length,
+                    etsyOrders: etsyCount,
+                    websiteOrders: websiteCount,
+                    ebayOrders: ebayCount
                 };
-            }, [filteredOrders]);
-            
-            joshTotals.owed = joshTotals.earned - joshTotals.paid;
+            }, [filteredOrders, joshOrders]);
             
             return (
                 <div>
@@ -3130,7 +3202,7 @@
                             {/* Total Shipping */}
                             <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-purple-300">
                                 <div className="text-4xl font-bold text-purple-600 mb-2">{utils.money(summaryTotals.totalShipping)}</div>
-                                <div className="text-sm font-medium text-gray-700 mb-4">Total Shipping Paid</div>
+                                <div className="text-sm font-medium text-gray-700 mb-4">Total Shipping Costs</div>
                                 {dateRange === "monthly" && monthlyTotals.length > 0 && (
                                     <div className="space-y-2">
                                         {monthlyTotals.slice(-6).map((month) => {
@@ -3183,7 +3255,47 @@
                             <span className="text-3xl">👤</span>
                             TJ
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-300">
+                                <div className="text-4xl font-bold text-blue-600 mb-2">{tjTotals.totalOrders}</div>
+                                <div className="text-sm font-medium text-gray-700 mb-4">Total Orders Fulfilled</div>
+                                <div className="space-y-2">
+                                    {tjTotals.etsyOrders > 0 && (
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-xs font-medium text-orange-700">Etsy</span>
+                                                <span className="text-xs text-gray-600">{tjTotals.etsyOrders} ({tjTotals.totalOrders > 0 ? (tjTotals.etsyOrders / tjTotals.totalOrders * 100).toFixed(1) : 0}%)</span>
+                                            </div>
+                                            <div className="w-full bg-orange-200 rounded-full h-2">
+                                                <div className="bg-orange-500 h-2 rounded-full" style={{ width: `${tjTotals.totalOrders > 0 ? (tjTotals.etsyOrders / tjTotals.totalOrders * 100) : 0}%` }}></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {tjTotals.websiteOrders > 0 && (
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-xs font-medium text-blue-700">Website</span>
+                                                <span className="text-xs text-gray-600">{tjTotals.websiteOrders} ({tjTotals.totalOrders > 0 ? (tjTotals.websiteOrders / tjTotals.totalOrders * 100).toFixed(1) : 0}%)</span>
+                                            </div>
+                                            <div className="w-full bg-blue-200 rounded-full h-2">
+                                                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${tjTotals.totalOrders > 0 ? (tjTotals.websiteOrders / tjTotals.totalOrders * 100) : 0}%` }}></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {tjTotals.ebayOrders > 0 && (
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-xs font-medium text-green-700">eBay</span>
+                                                <span className="text-xs text-gray-600">{tjTotals.ebayOrders} ({tjTotals.totalOrders > 0 ? (tjTotals.ebayOrders / tjTotals.totalOrders * 100).toFixed(1) : 0}%)</span>
+                                            </div>
+                                            <div className="w-full bg-green-200 rounded-full h-2">
+                                                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${tjTotals.totalOrders > 0 ? (tjTotals.ebayOrders / tjTotals.totalOrders * 100) : 0}%` }}></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            
                             <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-300">
                                 <div className="text-4xl font-bold text-green-600 mb-2">{utils.money(tjTotals.earned)}</div>
                                 <div className="text-sm font-medium text-gray-700 mb-4">Total Earned</div>
@@ -3261,12 +3373,12 @@
                                 {dateRange === "monthly" && monthlyTotals.length > 0 && (
                                     <div className="space-y-2">
                                         {monthlyTotals.slice(-6).map((month) => {
-                                            const percent = tjTotals.productionCost > 0 ? (month.productionCost / tjTotals.productionCost * 100).toFixed(1) : 0;
+                                            const percent = tjTotals.productionCost > 0 ? (month.tjProductionCost / tjTotals.productionCost * 100).toFixed(1) : 0;
                                             return (
                                                 <div key={month.month}>
                                                     <div className="flex justify-between items-center mb-1">
                                                         <span className="text-xs font-medium text-gray-700">{formatMonth(month.month)}</span>
-                                                        <span className="text-xs text-gray-600">{utils.money(month.productionCost)} ({percent}%)</span>
+                                                        <span className="text-xs text-gray-600">{utils.money(month.tjProductionCost)} ({percent}%)</span>
                                                     </div>
                                                     <div className="w-full bg-gray-200 rounded-full h-2">
                                                         <div className="bg-gray-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
@@ -3286,7 +3398,47 @@
                             <span className="text-3xl">👤</span>
                             Josh
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-300">
+                                <div className="text-4xl font-bold text-blue-600 mb-2">{joshTotals.totalOrders}</div>
+                                <div className="text-sm font-medium text-gray-700 mb-4">Total Orders Fulfilled</div>
+                                <div className="space-y-2">
+                                    {joshTotals.etsyOrders > 0 && (
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-xs font-medium text-orange-700">Etsy</span>
+                                                <span className="text-xs text-gray-600">{joshTotals.etsyOrders} ({joshTotals.totalOrders > 0 ? (joshTotals.etsyOrders / joshTotals.totalOrders * 100).toFixed(1) : 0}%)</span>
+                                            </div>
+                                            <div className="w-full bg-orange-200 rounded-full h-2">
+                                                <div className="bg-orange-500 h-2 rounded-full" style={{ width: `${joshTotals.totalOrders > 0 ? (joshTotals.etsyOrders / joshTotals.totalOrders * 100) : 0}%` }}></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {joshTotals.websiteOrders > 0 && (
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-xs font-medium text-blue-700">Website</span>
+                                                <span className="text-xs text-gray-600">{joshTotals.websiteOrders} ({joshTotals.totalOrders > 0 ? (joshTotals.websiteOrders / joshTotals.totalOrders * 100).toFixed(1) : 0}%)</span>
+                                            </div>
+                                            <div className="w-full bg-blue-200 rounded-full h-2">
+                                                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${joshTotals.totalOrders > 0 ? (joshTotals.websiteOrders / joshTotals.totalOrders * 100) : 0}%` }}></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {joshTotals.ebayOrders > 0 && (
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-xs font-medium text-green-700">eBay</span>
+                                                <span className="text-xs text-gray-600">{joshTotals.ebayOrders} ({joshTotals.totalOrders > 0 ? (joshTotals.ebayOrders / joshTotals.totalOrders * 100).toFixed(1) : 0}%)</span>
+                                            </div>
+                                            <div className="w-full bg-green-200 rounded-full h-2">
+                                                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${joshTotals.totalOrders > 0 ? (joshTotals.ebayOrders / joshTotals.totalOrders * 100) : 0}%` }}></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            
                             <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-300">
                                 <div className="text-4xl font-bold text-green-600 mb-2">{utils.money(joshTotals.earned)}</div>
                                 <div className="text-sm font-medium text-gray-700 mb-4">Total Earned</div>
@@ -3364,12 +3516,12 @@
                                 {dateRange === "monthly" && monthlyTotals.length > 0 && (
                                     <div className="space-y-2">
                                         {monthlyTotals.slice(-6).map((month) => {
-                                            const percent = joshTotals.productionCost > 0 ? (month.productionCost / joshTotals.productionCost * 100).toFixed(1) : 0;
+                                            const percent = joshTotals.productionCost > 0 ? (month.joshProductionCost / joshTotals.productionCost * 100).toFixed(1) : 0;
                                             return (
                                                 <div key={month.month}>
                                                     <div className="flex justify-between items-center mb-1">
                                                         <span className="text-xs font-medium text-gray-700">{formatMonth(month.month)}</span>
-                                                        <span className="text-xs text-gray-600">{utils.money(month.productionCost)} ({percent}%)</span>
+                                                        <span className="text-xs text-gray-600">{utils.money(month.joshProductionCost)} ({percent}%)</span>
                                                     </div>
                                                     <div className="w-full bg-gray-200 rounded-full h-2">
                                                         <div className="bg-gray-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
