@@ -14,6 +14,8 @@ const DB_PATH = process.env.PERSISTENT_STORAGE_PATH ?
 const db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) {
         console.error('Error opening database:', err.message);
+        console.error('Database path:', DB_PATH);
+        // Don't exit here - let the app try to continue
     } else {
         console.log(`Connected to SQLite database at: ${DB_PATH}`);
     }
@@ -1619,12 +1621,19 @@ app.get('/api/shipstation/test', async (req, res) => {
 // Initialize database and start server
 const startServer = async () => {
     try {
+        console.log('Initializing database...');
         await initDatabase();
-        await populateDatabase();
+        console.log('Database initialized successfully');
         
+        console.log('Populating database...');
+        await populateDatabase();
+        console.log('Database populated successfully');
+        
+        console.log(`Starting server on port ${PORT}...`);
         app.listen(PORT, () => {
-            console.log(`3D Print Calculator server running on port ${PORT}`);
+            console.log(`✅ 3D Print Calculator server running on port ${PORT}`);
             console.log(`Database: SQLite (persistent across deployments)`);
+            console.log(`Database path: ${DB_PATH}`);
             console.log(`ShipStation API configured: ${SHIPSTATION_API_KEY && SHIPSTATION_API_SECRET ? 'Yes' : 'No'}`);
             console.log(`WooCommerce API configured: ${WOOCOMMERCE_CONSUMER_KEY && WOOCOMMERCE_CONSUMER_SECRET ? 'Yes' : 'No'}`);
             if (SHIPSTATION_API_KEY && SHIPSTATION_API_SECRET) {
@@ -1636,7 +1645,8 @@ const startServer = async () => {
             }
         });
     } catch (error) {
-        console.error('Failed to start server:', error);
+        console.error('❌ Failed to start server:', error);
+        console.error('Error stack:', error.stack);
         process.exit(1);
     }
 };
