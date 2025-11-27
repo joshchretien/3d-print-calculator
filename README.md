@@ -174,6 +174,12 @@ PORT=3000
 
 ## 🔄 Version History
 
+### v1.8.2 - Returns Management Fixes (January 2025)
+- ✅ **Fixed Automatic Returns Subtraction**: Removed automatic returns subtraction from past payouts
+- ✅ **Returns Only When Explicitly Included**: Returns are only subtracted when explicitly checked in payout confirmation
+- ✅ **Return Line Items**: Returns included in payouts are displayed as line items with light red background
+- ✅ **Payout Matching**: Returns only included in payouts that have payoutId (not legacy date-based payouts)
+
 ### v1.8.1 - Enhanced Payout Workflow & Returns Management (January 2025)
 - ✅ **Shift-Click Selection**: Select multiple orders by clicking first order, then shift-clicking last order to select range
 - ✅ **Payout Confirmation Modal**: Comprehensive payout summary modal before processing payouts
