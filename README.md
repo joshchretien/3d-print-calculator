@@ -26,7 +26,7 @@ A comprehensive business management system designed specifically for 3D printing
 ### 💰 **Order Management & Financial Analytics**
 - **Multi-Line Orders**: Add multiple products to single orders
 - **Dynamic Quantity Input**: Special handling for power supply products
-- **Financial Calculations**: Automated profit sharing (70/30 split)
+- **Financial Calculations**: Automated profit sharing with adjustable TJ/Josh split percentages
 - **Cost Tracking**: Production cost, shipping, and profit analysis
 - **Payment Status**: Track paid vs. unpaid orders
 - **Payout Management**: Group orders by payment date with detailed breakdowns
@@ -34,7 +34,11 @@ A comprehensive business management system designed specifically for 3D printing
 - **Automated Order Entry**: Complete barcode scanning workflow with full auto-population
 - **API Integration**: Real-time data from ShipStation and WooCommerce
 - **Smart Product Matching**: Automatic product and count detection from WooCommerce orders
-- **Source Detection**: Automatic Etsy vs Website order identification
+- **Source Detection**: Automatic Etsy, Website, and eBay order identification
+- **Order Search**: Quick search by order number to find and edit orders
+- **Returns Management**: Mark orders as returned with automatic payout adjustments
+- **Maker Attribution**: Assign orders to TJ or Josh for production cost tracking
+- **Scan Date Tracking**: Track when each order was scanned for sorting and analysis
 
 ### 🔧 **Data Management**
 - **Import/Export**: JSON-based data portability
@@ -169,6 +173,20 @@ PORT=3000
 - **Business Analytics**: Revenue and profit analysis
 
 ## 🔄 Version History
+
+### v1.8.0 - Reports Tab & Enhanced Analytics (January 2025)
+- ✅ **Comprehensive Reports Tab**: New dedicated reporting section with Summary, TJ, and Josh breakdowns
+- ✅ **Date Range Filtering**: Monthly (default), Today, Yesterday, Last 7/14/30 Days, This Month/Year
+- ✅ **Summary Section**: Total orders by source, total payouts, shipping costs, production costs with monthly breakdowns
+- ✅ **TJ & Josh Sections**: Individual earnings, paid, owed, production costs, and orders fulfilled with source breakdowns
+- ✅ **Monthly Bar Charts**: Visual representation of monthly data distribution with percentages
+- ✅ **Order Search**: Quick search functionality to find and edit orders by order number
+- ✅ **Returns Management**: Mark orders as returned with automatic deduction from payouts
+- ✅ **Scan Date Column**: Added date tracking for order scanning and sorting
+- ✅ **Last Order Badges**: Display last Etsy, Website, and eBay orders in Add Order section
+- ✅ **Source Breakdowns**: Visual bar charts showing order distribution by source (Etsy, Website, eBay)
+- ✅ **Maker Field Persistence**: Added maker column to database for TJ/Josh order attribution
+- ✅ **Packaging Options Fallback**: Automatic fallback to default packaging options if database is empty
 
 ### v1.7.1 - Critical Database Persistence Fixes (January 2025)
 - ✅ **HTTP 413 Payload Too Large Fix**: Increased Express body parser limit to 10MB

@@ -469,7 +469,7 @@ const getDataFromDatabase = () => {
                                         data.orders = orders.map(order => ({
                                             ...order,
                                             items: order.items ? JSON.parse(order.items) : undefined,
-                                            returned: order.returned === 1 || order.returned === true || false,
+                                            returned: order.returned === 1 || order.returned === true,
                                             maker: order.maker || null
                                         }));
 
