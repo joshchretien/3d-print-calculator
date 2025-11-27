@@ -3010,6 +3010,11 @@
                         monthly[monthKey].joshPaid += order.joshShare || 0;
                     }
                     
+                    if (order.returned) {
+                        monthly[monthKey].tjReturned += order.tjShare || 0;
+                        monthly[monthKey].joshReturned += order.joshShare || 0;
+                    }
+                    
                     if (order.source === 'Etsy' || !order.source) {
                         monthly[monthKey].etsyOrders += 1;
                     } else if (order.source === 'Website') {
