@@ -2878,6 +2878,514 @@
             );
         };
 
+        const ReportsTab = ({ state, dispatch }) => {
+            const orders = state.orders || [];
+            const [dateRange, setDateRange] = useState("monthly");
+            
+            // Helper function to get date range based on selection
+            const getDateRange = () => {
+                const now = new Date();
+                const est = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+                const today = new Date(est.getFullYear(), est.getMonth(), est.getDate());
+                
+                switch(dateRange) {
+                    case "today":
+                        return { start: today, end: new Date(today.getTime() + 24 * 60 * 60 * 1000) };
+                    case "yesterday":
+                        const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+                        return { start: yesterday, end: today };
+                    case "last7":
+                        return { start: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000), end: new Date(today.getTime() + 24 * 60 * 60 * 1000) };
+                    case "last14":
+                        return { start: new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000), end: new Date(today.getTime() + 24 * 60 * 60 * 1000) };
+                    case "last30":
+                        return { start: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000), end: new Date(today.getTime() + 24 * 60 * 60 * 1000) };
+                    case "thismonth":
+                        return { start: new Date(est.getFullYear(), est.getMonth(), 1), end: new Date(est.getFullYear(), est.getMonth() + 1, 1) };
+                    case "thisyear":
+                        return { start: new Date(est.getFullYear(), 0, 1), end: new Date(est.getFullYear() + 1, 0, 1) };
+                    case "monthly":
+                    default:
+                        // Show all months
+                        return null;
+                }
+            };
+            
+            // Filter orders based on date range
+            const filteredOrders = useMemo(() => {
+                const range = getDateRange();
+                if (!range) return orders; // Monthly shows all
+                
+                return orders.filter(order => {
+                    if (!order.createdOn) return false;
+                    const orderDate = new Date(order.createdOn);
+                    return orderDate >= range.start && orderDate < range.end;
+                });
+            }, [orders, dateRange]);
+            
+            // Helper function to get month key from date
+            const getMonthKey = (dateString) => {
+                if (!dateString) return null;
+                const date = new Date(dateString);
+                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            };
+            
+            // Helper function to format month for display
+            const formatMonth = (monthKey) => {
+                if (!monthKey) return '';
+                const [year, month] = monthKey.split('-');
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                return `${monthNames[parseInt(month) - 1]} ${year}`;
+            };
+            
+            // Calculate monthly breakdowns for filtered orders
+            const monthlyTotals = useMemo(() => {
+                const monthly = {};
+                
+                filteredOrders.forEach(order => {
+                    const monthKey = getMonthKey(order.createdOn);
+                    if (!monthKey) return;
+                    
+                    if (!monthly[monthKey]) {
+                        monthly[monthKey] = {
+                            tjEarned: 0,
+                            tjPaid: 0,
+                            joshEarned: 0,
+                            joshPaid: 0,
+                            productionCost: 0,
+                            shippingCost: 0,
+                            totalPayout: 0,
+                            orders: 0,
+                            etsyOrders: 0,
+                            websiteOrders: 0,
+                            ebayOrders: 0
+                        };
+                    }
+                    
+                    monthly[monthKey].tjEarned += order.tjShare || 0;
+                    monthly[monthKey].joshEarned += order.joshShare || 0;
+                    monthly[monthKey].productionCost += order.productionCost || 0;
+                    monthly[monthKey].shippingCost += order.shippingCost || 0;
+                    monthly[monthKey].totalPayout += order.etsyPayout || 0;
+                    monthly[monthKey].orders += 1;
+                    
+                    if (order.status === 'Paid') {
+                        monthly[monthKey].tjPaid += order.tjShare || 0;
+                        monthly[monthKey].joshPaid += order.joshShare || 0;
+                    }
+                    
+                    if (order.source === 'Etsy' || !order.source) {
+                        monthly[monthKey].etsyOrders += 1;
+                    } else if (order.source === 'Website') {
+                        monthly[monthKey].websiteOrders += 1;
+                    } else if (order.source === 'eBay') {
+                        monthly[monthKey].ebayOrders += 1;
+                    }
+                });
+                
+                const sortedMonths = Object.keys(monthly).sort();
+                return sortedMonths.map(monthKey => ({
+                    month: monthKey,
+                    ...monthly[monthKey],
+                    tjOwed: monthly[monthKey].tjEarned - monthly[monthKey].tjPaid,
+                    joshOwed: monthly[monthKey].joshEarned - monthly[monthKey].joshPaid
+                }));
+            }, [filteredOrders]);
+            
+            // Summary totals
+            const summaryTotals = useMemo(() => {
+                const etsyCount = filteredOrders.filter(o => o.source === 'Etsy' || !o.source).length;
+                const websiteCount = filteredOrders.filter(o => o.source === 'Website').length;
+                const ebayCount = filteredOrders.filter(o => o.source === 'eBay').length;
+                const totalOrders = filteredOrders.length;
+                
+                return {
+                    totalOrders,
+                    etsyCount,
+                    websiteCount,
+                    ebayCount,
+                    totalPayouts: filteredOrders.reduce((sum, o) => sum + (o.etsyPayout || 0), 0),
+                    totalShipping: filteredOrders.reduce((sum, o) => sum + (o.shippingCost || 0), 0),
+                    totalProductionCost: filteredOrders.reduce((sum, o) => sum + (o.productionCost || 0), 0)
+                };
+            }, [filteredOrders]);
+            
+            // TJ totals
+            const tjTotals = useMemo(() => {
+                return {
+                    earned: filteredOrders.reduce((sum, o) => sum + (o.tjShare || 0), 0),
+                    paid: filteredOrders.filter(o => o.status === 'Paid').reduce((sum, o) => sum + (o.tjShare || 0), 0),
+                    productionCost: filteredOrders.reduce((sum, o) => sum + (o.productionCost || 0), 0)
+                };
+            }, [filteredOrders]);
+            
+            tjTotals.owed = tjTotals.earned - tjTotals.paid;
+            
+            // Josh totals
+            const joshTotals = useMemo(() => {
+                return {
+                    earned: filteredOrders.reduce((sum, o) => sum + (o.joshShare || 0), 0),
+                    paid: filteredOrders.filter(o => o.status === 'Paid').reduce((sum, o) => sum + (o.joshShare || 0), 0),
+                    productionCost: filteredOrders.reduce((sum, o) => sum + (o.productionCost || 0), 0)
+                };
+            }, [filteredOrders]);
+            
+            joshTotals.owed = joshTotals.earned - joshTotals.paid;
+            
+            return (
+                <div>
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-3xl font-bold text-gray-800">Reports</h2>
+                        <div className="flex items-center gap-3">
+                            <label className="text-sm font-medium text-gray-700">Date Range:</label>
+                            <select
+                                value={dateRange}
+                                onChange={(e) => setDateRange(e.target.value)}
+                                className="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                                <option value="monthly">Monthly (All)</option>
+                                <option value="today">Today</option>
+                                <option value="yesterday">Yesterday</option>
+                                <option value="last7">Last 7 Days</option>
+                                <option value="last14">Last 14 Days</option>
+                                <option value="last30">Last 30 Days</option>
+                                <option value="thismonth">This Month</option>
+                                <option value="thisyear">This Year</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    {/* Summary Section */}
+                    <div className="mb-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-xl border-2 border-blue-200 p-6">
+                        <h3 className="text-2xl font-bold text-indigo-800 mb-6 flex items-center gap-2">
+                            <span className="text-3xl">📊</span>
+                            Summary
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {/* Total Orders */}
+                            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-300">
+                                <div className="text-4xl font-bold text-blue-600 mb-2">{summaryTotals.totalOrders}</div>
+                                <div className="text-sm font-medium text-gray-700 mb-4">Total Orders</div>
+                                <div className="space-y-2">
+                                    {summaryTotals.etsyCount > 0 && (
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-xs font-medium text-orange-700">Etsy</span>
+                                                <span className="text-xs text-gray-600">{summaryTotals.etsyCount} ({summaryTotals.totalOrders > 0 ? (summaryTotals.etsyCount / summaryTotals.totalOrders * 100).toFixed(1) : 0}%)</span>
+                                            </div>
+                                            <div className="w-full bg-orange-200 rounded-full h-2">
+                                                <div className="bg-orange-500 h-2 rounded-full" style={{ width: `${summaryTotals.totalOrders > 0 ? (summaryTotals.etsyCount / summaryTotals.totalOrders * 100) : 0}%` }}></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {summaryTotals.websiteCount > 0 && (
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-xs font-medium text-blue-700">Website</span>
+                                                <span className="text-xs text-gray-600">{summaryTotals.websiteCount} ({summaryTotals.totalOrders > 0 ? (summaryTotals.websiteCount / summaryTotals.totalOrders * 100).toFixed(1) : 0}%)</span>
+                                            </div>
+                                            <div className="w-full bg-blue-200 rounded-full h-2">
+                                                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${summaryTotals.totalOrders > 0 ? (summaryTotals.websiteCount / summaryTotals.totalOrders * 100) : 0}%` }}></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {summaryTotals.ebayCount > 0 && (
+                                        <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-xs font-medium text-green-700">eBay</span>
+                                                <span className="text-xs text-gray-600">{summaryTotals.ebayCount} ({summaryTotals.totalOrders > 0 ? (summaryTotals.ebayCount / summaryTotals.totalOrders * 100).toFixed(1) : 0}%)</span>
+                                            </div>
+                                            <div className="w-full bg-green-200 rounded-full h-2">
+                                                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${summaryTotals.totalOrders > 0 ? (summaryTotals.ebayCount / summaryTotals.totalOrders * 100) : 0}%` }}></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            {/* Total Payouts */}
+                            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-300">
+                                <div className="text-4xl font-bold text-green-600 mb-2">{utils.money(summaryTotals.totalPayouts)}</div>
+                                <div className="text-sm font-medium text-gray-700 mb-4">Total Payouts</div>
+                                {dateRange === "monthly" && monthlyTotals.length > 0 && (
+                                    <div className="space-y-2">
+                                        {monthlyTotals.slice(-6).map((month) => {
+                                            const percent = summaryTotals.totalPayouts > 0 ? (month.totalPayout / summaryTotals.totalPayouts * 100).toFixed(1) : 0;
+                                            return (
+                                                <div key={month.month}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-medium text-green-700">{formatMonth(month.month)}</span>
+                                                        <span className="text-xs text-gray-600">{utils.money(month.totalPayout)} ({percent}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-green-200 rounded-full h-2">
+                                                        <div className="bg-green-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* Total Shipping */}
+                            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-purple-300">
+                                <div className="text-4xl font-bold text-purple-600 mb-2">{utils.money(summaryTotals.totalShipping)}</div>
+                                <div className="text-sm font-medium text-gray-700 mb-4">Total Shipping Paid</div>
+                                {dateRange === "monthly" && monthlyTotals.length > 0 && (
+                                    <div className="space-y-2">
+                                        {monthlyTotals.slice(-6).map((month) => {
+                                            const percent = summaryTotals.totalShipping > 0 ? (month.shippingCost / summaryTotals.totalShipping * 100).toFixed(1) : 0;
+                                            return (
+                                                <div key={month.month}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-medium text-purple-700">{formatMonth(month.month)}</span>
+                                                        <span className="text-xs text-gray-600">{utils.money(month.shippingCost)} ({percent}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-purple-200 rounded-full h-2">
+                                                        <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* Total Production Cost */}
+                            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-gray-300">
+                                <div className="text-4xl font-bold text-gray-600 mb-2">{utils.money(summaryTotals.totalProductionCost)}</div>
+                                <div className="text-sm font-medium text-gray-700 mb-4">Total Production Cost</div>
+                                {dateRange === "monthly" && monthlyTotals.length > 0 && (
+                                    <div className="space-y-2">
+                                        {monthlyTotals.slice(-6).map((month) => {
+                                            const percent = summaryTotals.totalProductionCost > 0 ? (month.productionCost / summaryTotals.totalProductionCost * 100).toFixed(1) : 0;
+                                            return (
+                                                <div key={month.month}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-medium text-gray-700">{formatMonth(month.month)}</span>
+                                                        <span className="text-xs text-gray-600">{utils.money(month.productionCost)} ({percent}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                                        <div className="bg-gray-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* TJ Section */}
+                    <div className="mb-8 bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl shadow-xl border-2 border-orange-200 p-6">
+                        <h3 className="text-2xl font-bold text-orange-800 mb-6 flex items-center gap-2">
+                            <span className="text-3xl">👤</span>
+                            TJ
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-300">
+                                <div className="text-4xl font-bold text-green-600 mb-2">{utils.money(tjTotals.earned)}</div>
+                                <div className="text-sm font-medium text-gray-700 mb-4">Total Earned</div>
+                                {dateRange === "monthly" && monthlyTotals.length > 0 && (
+                                    <div className="space-y-2">
+                                        {monthlyTotals.slice(-6).map((month) => {
+                                            const percent = tjTotals.earned > 0 ? (month.tjEarned / tjTotals.earned * 100).toFixed(1) : 0;
+                                            return (
+                                                <div key={month.month}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-medium text-green-700">{formatMonth(month.month)}</span>
+                                                        <span className="text-xs text-gray-600">{utils.money(month.tjEarned)} ({percent}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-green-200 rounded-full h-2">
+                                                        <div className="bg-green-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-300">
+                                <div className="text-4xl font-bold text-green-600 mb-2">{utils.money(tjTotals.paid)}</div>
+                                <div className="text-sm font-medium text-gray-700 mb-4">Total Paid</div>
+                                {dateRange === "monthly" && monthlyTotals.length > 0 && (
+                                    <div className="space-y-2">
+                                        {monthlyTotals.slice(-6).map((month) => {
+                                            const percent = tjTotals.paid > 0 ? (month.tjPaid / tjTotals.paid * 100).toFixed(1) : 0;
+                                            return (
+                                                <div key={month.month}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-medium text-green-700">{formatMonth(month.month)}</span>
+                                                        <span className="text-xs text-gray-600">{utils.money(month.tjPaid)} ({percent}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-green-200 rounded-full h-2">
+                                                        <div className="bg-green-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-orange-300">
+                                <div className="text-4xl font-bold text-orange-600 mb-2">{utils.money(Math.max(0, tjTotals.owed))}</div>
+                                <div className="text-sm font-medium text-gray-700 mb-4">Total Owed</div>
+                                {dateRange === "monthly" && monthlyTotals.length > 0 && (
+                                    <div className="space-y-2">
+                                        {monthlyTotals.slice(-6).map((month) => {
+                                            const monthOwed = Math.max(0, month.tjOwed);
+                                            const totalOwed = Math.max(0, tjTotals.owed);
+                                            const percent = totalOwed > 0 ? (monthOwed / totalOwed * 100).toFixed(1) : 0;
+                                            return (
+                                                <div key={month.month}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-medium text-orange-700">{formatMonth(month.month)}</span>
+                                                        <span className="text-xs text-gray-600">{utils.money(monthOwed)} ({percent}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-orange-200 rounded-full h-2">
+                                                        <div className="bg-orange-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-gray-300">
+                                <div className="text-4xl font-bold text-gray-600 mb-2">{utils.money(tjTotals.productionCost)}</div>
+                                <div className="text-sm font-medium text-gray-700 mb-4">Production Cost</div>
+                                {dateRange === "monthly" && monthlyTotals.length > 0 && (
+                                    <div className="space-y-2">
+                                        {monthlyTotals.slice(-6).map((month) => {
+                                            const percent = tjTotals.productionCost > 0 ? (month.productionCost / tjTotals.productionCost * 100).toFixed(1) : 0;
+                                            return (
+                                                <div key={month.month}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-medium text-gray-700">{formatMonth(month.month)}</span>
+                                                        <span className="text-xs text-gray-600">{utils.money(month.productionCost)} ({percent}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                                        <div className="bg-gray-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Josh Section */}
+                    <div className="mb-8 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl shadow-xl border-2 border-blue-200 p-6">
+                        <h3 className="text-2xl font-bold text-blue-800 mb-6 flex items-center gap-2">
+                            <span className="text-3xl">👤</span>
+                            Josh
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-300">
+                                <div className="text-4xl font-bold text-green-600 mb-2">{utils.money(joshTotals.earned)}</div>
+                                <div className="text-sm font-medium text-gray-700 mb-4">Total Earned</div>
+                                {dateRange === "monthly" && monthlyTotals.length > 0 && (
+                                    <div className="space-y-2">
+                                        {monthlyTotals.slice(-6).map((month) => {
+                                            const percent = joshTotals.earned > 0 ? (month.joshEarned / joshTotals.earned * 100).toFixed(1) : 0;
+                                            return (
+                                                <div key={month.month}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-medium text-green-700">{formatMonth(month.month)}</span>
+                                                        <span className="text-xs text-gray-600">{utils.money(month.joshEarned)} ({percent}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-green-200 rounded-full h-2">
+                                                        <div className="bg-green-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-300">
+                                <div className="text-4xl font-bold text-green-600 mb-2">{utils.money(joshTotals.paid)}</div>
+                                <div className="text-sm font-medium text-gray-700 mb-4">Total Paid</div>
+                                {dateRange === "monthly" && monthlyTotals.length > 0 && (
+                                    <div className="space-y-2">
+                                        {monthlyTotals.slice(-6).map((month) => {
+                                            const percent = joshTotals.paid > 0 ? (month.joshPaid / joshTotals.paid * 100).toFixed(1) : 0;
+                                            return (
+                                                <div key={month.month}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-medium text-green-700">{formatMonth(month.month)}</span>
+                                                        <span className="text-xs text-gray-600">{utils.money(month.joshPaid)} ({percent}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-green-200 rounded-full h-2">
+                                                        <div className="bg-green-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-orange-300">
+                                <div className="text-4xl font-bold text-orange-600 mb-2">{utils.money(Math.max(0, joshTotals.owed))}</div>
+                                <div className="text-sm font-medium text-gray-700 mb-4">Total Owed</div>
+                                {dateRange === "monthly" && monthlyTotals.length > 0 && (
+                                    <div className="space-y-2">
+                                        {monthlyTotals.slice(-6).map((month) => {
+                                            const monthOwed = Math.max(0, month.joshOwed);
+                                            const totalOwed = Math.max(0, joshTotals.owed);
+                                            const percent = totalOwed > 0 ? (monthOwed / totalOwed * 100).toFixed(1) : 0;
+                                            return (
+                                                <div key={month.month}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-medium text-orange-700">{formatMonth(month.month)}</span>
+                                                        <span className="text-xs text-gray-600">{utils.money(monthOwed)} ({percent}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-orange-200 rounded-full h-2">
+                                                        <div className="bg-orange-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-gray-300">
+                                <div className="text-4xl font-bold text-gray-600 mb-2">{utils.money(joshTotals.productionCost)}</div>
+                                <div className="text-sm font-medium text-gray-700 mb-4">Production Cost</div>
+                                {dateRange === "monthly" && monthlyTotals.length > 0 && (
+                                    <div className="space-y-2">
+                                        {monthlyTotals.slice(-6).map((month) => {
+                                            const percent = joshTotals.productionCost > 0 ? (month.productionCost / joshTotals.productionCost * 100).toFixed(1) : 0;
+                                            return (
+                                                <div key={month.month}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-medium text-gray-700">{formatMonth(month.month)}</span>
+                                                        <span className="text-xs text-gray-600">{utils.money(month.productionCost)} ({percent}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                                        <div className="bg-gray-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         const ManageTab = ({ state, dispatch }) => {
             const [roll, setRoll] = useState("");
             const [brands, setBrands] = useState(state.brands.join("\n"));
@@ -3088,7 +3596,7 @@
                 }
             }, [state, isLoading]);
 
-            const tabs = [["products", "Products"], ["orders", "Orders"], ["packaging", "Packaging"], ["manage", "Manage"]];
+            const tabs = [["products", "Products"], ["orders", "Orders"], ["reports", "Reports"], ["packaging", "Packaging"], ["manage", "Manage"]];
 
             if (isLoading) {
                 return (
@@ -3184,6 +3692,7 @@
                     <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
                         {tab === "products" && <ProductsTab state={state} dispatch={dispatch} />}
                         {tab === "orders" && <OrdersTab state={state} dispatch={dispatch} />}
+                        {tab === "reports" && <ReportsTab state={state} dispatch={dispatch} />}
                         {tab === "packaging" && <PackagingTab state={state} dispatch={dispatch} />}
                         {tab === "manage" && <ManageTab state={state} dispatch={dispatch} />}
                     </main>
