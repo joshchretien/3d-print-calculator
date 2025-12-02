@@ -174,6 +174,15 @@ PORT=3000
 
 ## 🔄 Version History
 
+### v1.9.0 - Import/Export with Activity Logs (January 2025)
+- ✅ **Smart Import Functionality**: Import backup files with comparison analysis
+- ✅ **Import Confirmation Modal**: Shows total orders in backup, new entries to be added, and duplicates found
+- ✅ **Duplicate Detection**: Automatically detects and skips duplicate orders during import
+- ✅ **Activity Logs System**: Tracks all imports and exports with timestamps and details
+- ✅ **Activity Log Display**: View all import/export activity in Manage tab
+- ✅ **Export/Import Buttons Moved**: Moved from Products tab to Manage tab (top right)
+- ✅ **Database Persistence**: Activity logs are saved to database and persist across sessions
+
 ### v1.8.3 - Return Payout Persistence Fix (January 2025)
 - ✅ **Database Persistence for returnPayoutId**: Added `returnPayoutId` column to database schema
 - ✅ **Return-Payout Association**: Returns included in payouts now persist across page refreshes
