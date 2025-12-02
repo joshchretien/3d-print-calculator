@@ -12,7 +12,7 @@
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        const { useState, useReducer, useEffect, useMemo, useCallback, memo } = React;
+        const { useState, useReducer, useEffect, useMemo, useCallback, useRef, memo } = React;
 
         // Version checking and auto-refresh functionality
         const VersionChecker = {
@@ -220,6 +220,7 @@
             SET_LIST: "SET_LIST",
             ADD_ROLL_COST: "ADD_ROLL_COST",
             ADD_TJ_SHARE_PERCENTAGE: "ADD_TJ_SHARE_PERCENTAGE",
+            SET_FILAMENT_PROVIDED_BY_COMPANY: "SET_FILAMENT_PROVIDED_BY_COMPANY",
             SET_VALUE: "SET_VALUE",
             ADD_ORDER: "ADD_ORDER",
             UPDATE_ORDER: "UPDATE_ORDER",
@@ -231,6 +232,8 @@
             MARK_AS_RETURNED: "MARK_AS_RETURNED",
             UNMARK_AS_RETURNED: "UNMARK_AS_RETURNED",
             MARK_RETURNS_INCLUDED: "MARK_RETURNS_INCLUDED",
+            ADD_ACTIVITY_LOG: "ADD_ACTIVITY_LOG",
+            IMPORT_DATA: "IMPORT_DATA",
             INITIALIZE: "INITIALIZE"
         };
 
@@ -240,9 +243,11 @@
             styles: [...CONSTANTS.DEFAULT_STYLES],
             rollCosts: [{ id: utils.uid(), value: CONSTANTS.DEFAULT_ROLL_COST, date: utils.today() }],
             tjSharePercentages: [{ id: utils.uid(), value: CONSTANTS.TJ_SHARE_PERCENTAGE * 100, date: utils.today() }],
+            filamentProviderHistory: [],
             multipliers: { ...DEFAULT_MULTIPLIERS },
             orders: [],
-            packagingOptions: [...CONSTANTS.PACKAGING_OPTIONS]
+            packagingOptions: [...CONSTANTS.PACKAGING_OPTIONS],
+            activityLogs: []
         };
 
         function reducer(state, action) {
@@ -259,6 +264,17 @@
                     return { ...state, rollCosts: [...state.rollCosts, action.rollCost] };
                 case ACTIONS.ADD_TJ_SHARE_PERCENTAGE:
                     return { ...state, tjSharePercentages: [...state.tjSharePercentages, action.tjShare] };
+                case ACTIONS.SET_FILAMENT_PROVIDED_BY_COMPANY:
+                    const historyEntry = {
+                        id: utils.uid(),
+                        date: utils.today(),
+                        enabled: action.enabled,
+                        message: action.enabled ? "Provided by Deliciosa Decor" : "Reverted to default"
+                    };
+                    return { 
+                        ...state, 
+                        filamentProviderHistory: [...(state.filamentProviderHistory || []), historyEntry] 
+                    };
                 case ACTIONS.SET_VALUE:
                     return { ...state, [action.key]: action.value };
                 case ACTIONS.ADD_ORDER:
@@ -279,6 +295,33 @@
                     return { ...state, orders: state.orders.map((o) => o.id === action.id ? { ...o, returned: false, returnPayoutId: null } : o) };
                 case ACTIONS.MARK_RETURNS_INCLUDED:
                     return { ...state, orders: state.orders.map((o) => action.ids.includes(o.id) ? { ...o, returnPayoutId: action.payoutId } : o) };
+                case ACTIONS.ADD_ACTIVITY_LOG:
+                    return { 
+                        ...state, 
+                        activityLogs: [...(state.activityLogs || []), {
+                            id: utils.uid(),
+                            type: action.logType,
+                            message: action.message,
+                            timestamp: utils.now(),
+                            details: action.details || {}
+                        }]
+                    };
+                case ACTIONS.IMPORT_DATA:
+                    // Merge imported orders with existing orders, avoiding duplicates
+                    const existingOrderIds = new Set(state.orders.map(o => o.id));
+                    const newOrders = action.importedOrders.filter(o => !existingOrderIds.has(o.id));
+                    const mergedOrders = [...state.orders, ...newOrders];
+                    return { 
+                        ...state, 
+                        orders: mergedOrders,
+                        activityLogs: [...(state.activityLogs || []), {
+                            id: utils.uid(),
+                            type: 'import',
+                            message: `Imported ${newOrders.length} new orders, ${action.duplicateCount} duplicates skipped`,
+                            timestamp: utils.now(),
+                            details: { newCount: newOrders.length, duplicateCount: action.duplicateCount }
+                        }]
+                    };
                 case ACTIONS.EDIT_SPLIT:
                     return { ...state, orders: state.orders.map((o) => {
                         if (action.ids.includes(o.id)) {
@@ -302,8 +345,10 @@
             const state = { ...defaultState, ...(raw || {}) };
             if (!Array.isArray(state.products)) state.products = [];
             if (!Array.isArray(state.rollCosts)) state.rollCosts = [...defaultState.rollCosts];
+            if (!Array.isArray(state.filamentProviderHistory)) state.filamentProviderHistory = [];
             if (!Array.isArray(state.tjSharePercentages)) state.tjSharePercentages = [...defaultState.tjSharePercentages];
             if (!Array.isArray(state.orders)) state.orders = [];
+            if (!Array.isArray(state.activityLogs)) state.activityLogs = [];
             if (!Array.isArray(state.brands) || !state.brands.length) {
                 state.brands = [...CONSTANTS.DEFAULT_BRANDS];
             }
@@ -707,33 +752,6 @@
                 setFilament("");
                 setShowAddProduct(false);
             }, [brand, model, style, preset, filament, dispatch]);
-
-            const exportData = useCallback(() => {
-                const dataStr = JSON.stringify(state, null, 2);
-                const dataUri = "data:application/json;charset=utf-8,"+ encodeURIComponent(dataStr);
-                const exportFileDefaultName = "print-calculator-data.json";
-                const linkElement = document.createElement("a");
-                linkElement.setAttribute("href", dataUri);
-                linkElement.setAttribute("download", exportFileDefaultName);
-                linkElement.click();
-            }, [state]);
-
-            const importData = useCallback((event) => {
-                const file = event.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const imported = JSON.parse(e.target.result);
-                        const migrated = migrateState(imported);
-                        dispatch({ type: ACTIONS.INITIALIZE, payload: migrated });
-                        alert("Data imported successfully!");
-                    } catch (error) {
-                        alert("Error importing data: " + error.message);
-                    }
-                };
-                reader.readAsText(file);
-            }, [dispatch]);
 
             const totalProducts = state.products.length;
 
@@ -1374,6 +1392,25 @@
                 
                 // Calculate TJ and Josh shares for the entire order
                 const profit = payout - shipping - totalProductionCost;
+                const orderDate = utils.today(); // Use today's date for comparison
+                
+                // Check if filament is provided by company (Josh)
+                const filamentProvidedByCompany = (() => {
+                    if (!state.filamentProviderHistory || state.filamentProviderHistory.length === 0) {
+                        return null;
+                    }
+                    // Find the most recent enabled entry
+                    const sortedHistory = [...state.filamentProviderHistory].sort((a, b) => 
+                        new Date(b.date) - new Date(a.date)
+                    );
+                    const latestEnabled = sortedHistory.find(entry => entry.enabled === true);
+                    return latestEnabled || null;
+                })();
+                
+                // Determine if production cost should go to Josh based on date
+                const isFilamentProvidedByCompany = filamentProvidedByCompany && 
+                    new Date(orderDate) >= new Date(filamentProvidedByCompany.date);
+                
                 let tjShare, joshShare;
                 
                 if (maker === "Josh") {
@@ -1389,8 +1426,15 @@
                     // Default TJ logic: TJ gets X% of profit PLUS production cost
                     const tjProfitShare = profit * latestTjShare;
                     const joshProfitShare = profit * (1 - latestTjShare);
-                    tjShare = tjProfitShare + totalProductionCost;
-                    joshShare = joshProfitShare;
+                    
+                    // If filament is provided by company, production cost goes to Josh instead of TJ
+                    if (isFilamentProvidedByCompany) {
+                        tjShare = tjProfitShare;
+                        joshShare = joshProfitShare + totalProductionCost;
+                    } else {
+                        tjShare = tjProfitShare + totalProductionCost;
+                        joshShare = joshProfitShare;
+                    }
                 }
                 
                 const order = {
@@ -1646,6 +1690,26 @@
                 
                 // Calculate TJ and Josh shares for the entire order
                 const profit = payout - shipping - totalProductionCost;
+                // Use the original order date for comparison (when order was created)
+                const orderDate = editingOrder?.createdOn ? editingOrder.createdOn.slice(0, 10) : utils.today();
+                
+                // Check if filament is provided by company (Josh)
+                const filamentProvidedByCompany = (() => {
+                    if (!state.filamentProviderHistory || state.filamentProviderHistory.length === 0) {
+                        return null;
+                    }
+                    // Find the most recent enabled entry
+                    const sortedHistory = [...state.filamentProviderHistory].sort((a, b) => 
+                        new Date(b.date) - new Date(a.date)
+                    );
+                    const latestEnabled = sortedHistory.find(entry => entry.enabled === true);
+                    return latestEnabled || null;
+                })();
+                
+                // Determine if production cost should go to Josh based on date
+                const isFilamentProvidedByCompany = filamentProvidedByCompany && 
+                    new Date(orderDate) >= new Date(filamentProvidedByCompany.date);
+                
                 let tjShare, joshShare;
                 
                 if (editMaker === "Josh") {
@@ -1654,15 +1718,22 @@
                     tjShare = 0;
                 } else {
                     // Get the latest TJ share percentage from history
-                    const latestTjShare = state.tjSharePercentages && state.tjSharePercentages.length > 0 
+                    const latestTjShare = state.tjSharePercentages && state.tjSharePercentages.length > 0
                         ? state.tjSharePercentages[state.tjSharePercentages.length - 1].value / 100
                         : CONSTANTS.TJ_SHARE_PERCENTAGE;
                     
                     // Default TJ logic: TJ gets X% of profit PLUS production cost
                     const tjProfitShare = profit * latestTjShare;
                     const joshProfitShare = profit * (1 - latestTjShare);
-                    tjShare = tjProfitShare + totalProductionCost;
-                    joshShare = joshProfitShare;
+                    
+                    // If filament is provided by company, production cost goes to Josh instead of TJ
+                    if (isFilamentProvidedByCompany) {
+                        tjShare = tjProfitShare;
+                        joshShare = joshProfitShare + totalProductionCost;
+                    } else {
+                        tjShare = tjProfitShare + totalProductionCost;
+                        joshShare = joshProfitShare;
+                    }
                 }
                 
                 dispatch({ 
@@ -3905,9 +3976,125 @@
                 setTjSharePercentage("");
             }, [tjSharePercentage, dispatch]);
 
+            // Get current filament provider status (latest enabled entry)
+            const isFilamentProvidedByCompany = useMemo(() => {
+                if (!state.filamentProviderHistory || state.filamentProviderHistory.length === 0) {
+                    return false;
+                }
+                const sortedHistory = [...state.filamentProviderHistory].sort((a, b) => 
+                    new Date(b.date) - new Date(a.date)
+                );
+                const latestEntry = sortedHistory[0];
+                return latestEntry && latestEntry.enabled === true;
+            }, [state.filamentProviderHistory]);
+
+            const toggleFilamentProvider = useCallback(() => {
+                const newEnabled = !isFilamentProvidedByCompany;
+                dispatch({ 
+                    type: ACTIONS.SET_FILAMENT_PROVIDED_BY_COMPANY, 
+                    enabled: newEnabled 
+                });
+            }, [isFilamentProvidedByCompany, dispatch]);
+
+            // Import/Export functionality
+            const [showImportModal, setShowImportModal] = useState(false);
+            const [importPreview, setImportPreview] = useState(null);
+            const fileInputRef = useRef(null);
+
+            const exportData = useCallback(() => {
+                const dataStr = JSON.stringify(state, null, 2);
+                const dataUri = "data:application/json;charset=utf-8,"+ encodeURIComponent(dataStr);
+                const exportFileDefaultName = `print-calculator-data-${utils.today()}.json`;
+                const linkElement = document.createElement("a");
+                linkElement.setAttribute("href", dataUri);
+                linkElement.setAttribute("download", exportFileDefaultName);
+                linkElement.click();
+                
+                // Log export
+                dispatch({ 
+                    type: ACTIONS.ADD_ACTIVITY_LOG, 
+                    logType: 'export',
+                    message: `Data exported - ${state.orders.length} orders, ${state.products.length} products`,
+                    details: { orderCount: state.orders.length, productCount: state.products.length }
+                });
+            }, [state, dispatch]);
+
+            const handleFileSelect = useCallback((event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const imported = JSON.parse(e.target.result);
+                        const migrated = migrateState(imported);
+                        
+                        // Compare orders
+                        const existingOrderIds = new Set(state.orders.map(o => o.id));
+                        const importedOrders = migrated.orders || [];
+                        const newOrders = importedOrders.filter(o => !existingOrderIds.has(o.id));
+                        const duplicateOrders = importedOrders.filter(o => existingOrderIds.has(o.id));
+                        
+                        setImportPreview({
+                            totalInBackup: importedOrders.length,
+                            newEntries: newOrders.length,
+                            duplicates: duplicateOrders.length,
+                            importedData: migrated
+                        });
+                        setShowImportModal(true);
+                    } catch (error) {
+                        alert("Error reading file: " + error.message);
+                    }
+                };
+                reader.readAsText(file);
+                // Reset file input
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                }
+            }, [state.orders, dispatch]);
+
+            const confirmImport = useCallback(() => {
+                if (!importPreview) return;
+                
+                const existingOrderIds = new Set(state.orders.map(o => o.id));
+                const newOrders = importPreview.importedData.orders.filter(o => !existingOrderIds.has(o.id));
+                
+                dispatch({ 
+                    type: ACTIONS.IMPORT_DATA, 
+                    importedOrders: importPreview.importedData.orders,
+                    duplicateCount: importPreview.duplicates
+                });
+                
+                setShowImportModal(false);
+                setImportPreview(null);
+                alert(`Import completed! ${newOrders.length} new orders added, ${importPreview.duplicates} duplicates skipped.`);
+            }, [importPreview, state.orders, dispatch]);
+
+            const cancelImport = useCallback(() => {
+                setShowImportModal(false);
+                setImportPreview(null);
+            }, []);
+
             return (
                 <div>
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Manage Settings</h2>
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold text-gray-800">Manage Settings</h2>
+                        <div className="flex gap-2">
+                            <button onClick={exportData} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors duration-200">
+                                Export Data
+                            </button>
+                            <label className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 cursor-pointer">
+                                Import Data
+                                <input 
+                                    ref={fileInputRef}
+                                    type="file" 
+                                    accept=".json" 
+                                    onChange={handleFileSelect} 
+                                    className="hidden" 
+                                />
+                            </label>
+                        </div>
+                    </div>
                     
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
@@ -3958,6 +4145,44 @@
                         </div>
 
                         <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                            <h3 className="text-lg font-semibold mb-4 text-gray-800">Filament Provider</h3>
+                            <div className="mb-4">
+                                <label className="flex items-center space-x-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={isFilamentProvidedByCompany}
+                                        onChange={toggleFilamentProvider}
+                                        className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                    <span className="text-gray-700 font-medium">
+                                        Filament provided by company (Josh)
+                                    </span>
+                                </label>
+                                <p className="text-sm text-gray-500 mt-2">
+                                    When enabled, production costs will be allocated to Josh for all orders created from this point forward.
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                {state.filamentProviderHistory && state.filamentProviderHistory.length > 0 && (
+                                    <>
+                                        {[...state.filamentProviderHistory].sort((a, b) => new Date(b.date) - new Date(a.date)).map((entry) => (
+                                            <div key={entry.id} className={`flex justify-between items-center p-2 rounded ${
+                                                entry.enabled ? 'bg-green-50 border border-green-200' : 'bg-gray-50'
+                                            }`}>
+                                                <span className="text-sm">{entry.date}</span>
+                                                <span className={`text-sm font-medium ${
+                                                    entry.enabled ? 'text-green-700' : 'text-gray-600'
+                                                }`}>
+                                                    {entry.message}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
                             <h3 className="text-lg font-semibold mb-4 text-gray-800">Brands</h3>
                             <textarea
                                 className="w-full border border-gray-300 rounded-lg px-3 py-2 h-40 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -4001,6 +4226,84 @@
                             <button onClick={saveMultipliers} className="mt-3 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors duration-200">Save</button>
                         </div>
                     </div>
+
+                    {/* Activity Logs Section */}
+                    <div className="mt-6 bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-800">Activity Logs</h3>
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                            {state.activityLogs && state.activityLogs.length > 0 ? (
+                                [...state.activityLogs].reverse().map((log) => (
+                                    <div key={log.id} className={`flex justify-between items-center p-3 rounded ${
+                                        log.type === 'export' ? 'bg-green-50 border border-green-200' :
+                                        log.type === 'import' ? 'bg-purple-50 border border-purple-200' :
+                                        'bg-gray-50 border border-gray-200'
+                                    }`}>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                                    log.type === 'export' ? 'bg-green-200 text-green-800' :
+                                                    log.type === 'import' ? 'bg-purple-200 text-purple-800' :
+                                                    'bg-gray-200 text-gray-800'
+                                                }`}>
+                                                    {log.type.toUpperCase()}
+                                                </span>
+                                                <span className="text-sm text-gray-600">
+                                                    {new Date(log.timestamp).toLocaleString()}
+                                                </span>
+                                            </div>
+                                            <div className="text-sm text-gray-800">{log.message}</div>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center text-gray-500 py-4">No activity logs yet</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Import Confirmation Modal */}
+                    {showImportModal && importPreview && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4">
+                                <h3 className="text-xl font-bold mb-4 text-gray-800">Import Data Confirmation</h3>
+                                
+                                <div className="space-y-4 mb-6">
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                        <div className="text-sm font-medium text-blue-800 mb-2">Backup File Summary</div>
+                                        <div className="text-2xl font-bold text-blue-600">{importPreview.totalInBackup}</div>
+                                        <div className="text-xs text-blue-600">Total orders in backup</div>
+                                    </div>
+                                    
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                        <div className="text-sm font-medium text-green-800 mb-2">New Entries</div>
+                                        <div className="text-2xl font-bold text-green-600">{importPreview.newEntries}</div>
+                                        <div className="text-xs text-green-600">Orders to be added</div>
+                                    </div>
+                                    
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                        <div className="text-sm font-medium text-yellow-800 mb-2">Duplicates Found</div>
+                                        <div className="text-2xl font-bold text-yellow-600">{importPreview.duplicates}</div>
+                                        <div className="text-xs text-yellow-600">Already in system (will be skipped)</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={cancelImport}
+                                        className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={confirmImport}
+                                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+                                    >
+                                        Confirm Import
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };

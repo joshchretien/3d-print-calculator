@@ -113,6 +113,20 @@ const initDatabase = () => {
                 }
             });
 
+            // Filament Provider History table
+            db.run(`CREATE TABLE IF NOT EXISTS filamentProviderHistory (
+                id TEXT PRIMARY KEY,
+                date TEXT,
+                enabled INTEGER,
+                message TEXT
+            )`, (err) => {
+                if (err) {
+                    console.error('Error creating filamentProviderHistory table:', err);
+                } else {
+                    console.log('filamentProviderHistory table created successfully');
+                }
+            });
+
             // Multipliers table
             db.run(`CREATE TABLE IF NOT EXISTS multipliers (
                 id TEXT PRIMARY KEY,
@@ -137,6 +151,15 @@ const initDatabase = () => {
             db.run(`CREATE TABLE IF NOT EXISTS packagingOptions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT UNIQUE
+            )`);
+
+            // Activity logs table
+            db.run(`CREATE TABLE IF NOT EXISTS activityLogs (
+                id TEXT PRIMARY KEY,
+                type TEXT,
+                message TEXT,
+                timestamp TEXT,
+                details TEXT
             )`);
 
             // Settings table
@@ -362,6 +385,34 @@ const populateDatabase = () => {
                     }
                 }
 
+                // Insert filament provider history
+                if (currentData.filamentProviderHistory && currentData.filamentProviderHistory.length > 0) {
+                    try {
+                        const insertFilamentProvider = db.prepare("INSERT INTO filamentProviderHistory (id, date, enabled, message) VALUES (?, ?, ?, ?)");
+                        currentData.filamentProviderHistory.forEach(entry => {
+                            insertFilamentProvider.run(entry.id, entry.date, entry.enabled ? 1 : 0, entry.message || "");
+                        });
+                        insertFilamentProvider.finalize();
+                        console.log('Filament provider history inserted successfully');
+                    } catch (error) {
+                        console.error('Error inserting filament provider history:', error);
+                    }
+                }
+
+                // Insert activity logs
+                if (currentData.activityLogs && currentData.activityLogs.length > 0) {
+                    try {
+                        const insertActivityLog = db.prepare("INSERT INTO activityLogs (id, type, message, timestamp, details) VALUES (?, ?, ?, ?, ?)");
+                        currentData.activityLogs.forEach(log => {
+                            insertActivityLog.run(log.id, log.type, log.message, log.timestamp, JSON.stringify(log.details || {}));
+                        });
+                        insertActivityLog.finalize();
+                        console.log('Activity logs inserted successfully');
+                    } catch (error) {
+                        console.error('Error inserting activity logs:', error);
+                    }
+                }
+
                 // Insert multipliers
                 const insertMultiplier = db.prepare("INSERT INTO multipliers (id, preset, count, multiplier) VALUES (?, ?, ?, ?)");
                 Object.entries(currentData.multipliers).forEach(([preset, counts]) => {
@@ -394,6 +445,8 @@ const getDataFromDatabase = () => {
             orders: [],
             rollCosts: [],
             tjSharePercentages: [],
+            filamentProviderHistory: [],
+            activityLogs: [],
             brands: [],
             styles: [],
             packagingOptions: [],
@@ -458,43 +511,74 @@ const getDataFromDatabase = () => {
                                     data.tjSharePercentages = tjSharePercentages || [];
                                 }
 
-                                // Get multipliers
-                                db.all("SELECT * FROM multipliers", (err, multipliers) => {
+                                // Get filament provider history
+                                db.all("SELECT * FROM filamentProviderHistory", (err, filamentProviderHistory) => {
                                     if (err) {
-                                        reject(err);
-                                        return;
-                                    }
-                                    
-                                    multipliers.forEach(mult => {
-                                        if (!data.multipliers[mult.preset]) {
-                                            data.multipliers[mult.preset] = {};
-                                        }
-                                        data.multipliers[mult.preset][mult.count] = mult.multiplier;
-                                    });
-
-                                    // Get orders
-                                    db.all("SELECT * FROM orders", (err, orders) => {
-                                        if (err) {
-                                            reject(err);
-                                            return;
-                                        }
-                                        
-                                        data.orders = orders.map(order => ({
-                                            ...order,
-                                            items: order.items ? JSON.parse(order.items) : undefined,
-                                            returned: order.returned === 1 || order.returned === true,
-                                            maker: order.maker || null,
-                                            returnPayoutId: order.returnPayoutId || null
+                                        console.warn('Error fetching filament provider history, using defaults:', err);
+                                        data.filamentProviderHistory = [];
+                                    } else {
+                                        data.filamentProviderHistory = (filamentProviderHistory || []).map(entry => ({
+                                            id: entry.id,
+                                            date: entry.date,
+                                            enabled: entry.enabled === 1 || entry.enabled === true,
+                                            message: entry.message || ""
                                         }));
+                                    }
 
-                                        // Get global discount
-                                        db.get("SELECT value FROM settings WHERE key = 'globalDiscount'", (err, setting) => {
+                                    // Get activity logs
+                                    db.all("SELECT * FROM activityLogs", (err, activityLogs) => {
+                                        if (err) {
+                                            console.warn('Error fetching activity logs, using defaults:', err);
+                                            data.activityLogs = [];
+                                        } else {
+                                            data.activityLogs = (activityLogs || []).map(log => ({
+                                                id: log.id,
+                                                type: log.type,
+                                                message: log.message,
+                                                timestamp: log.timestamp,
+                                                details: log.details ? JSON.parse(log.details) : {}
+                                            }));
+                                        }
+
+                                        // Get multipliers
+                                        db.all("SELECT * FROM multipliers", (err, multipliers) => {
                                             if (err) {
                                                 reject(err);
                                                 return;
                                             }
-                                            data.globalDiscount = setting ? parseInt(setting.value) : 25;
-                                            resolve(data);
+                                            
+                                            multipliers.forEach(mult => {
+                                                if (!data.multipliers[mult.preset]) {
+                                                    data.multipliers[mult.preset] = {};
+                                                }
+                                                data.multipliers[mult.preset][mult.count] = mult.multiplier;
+                                            });
+
+                                            // Get orders
+                                            db.all("SELECT * FROM orders", (err, orders) => {
+                                                if (err) {
+                                                    reject(err);
+                                                    return;
+                                                }
+                                                
+                                                data.orders = orders.map(order => ({
+                                                    ...order,
+                                                    items: order.items ? JSON.parse(order.items) : undefined,
+                                                    returned: order.returned === 1 || order.returned === true,
+                                                    maker: order.maker || null,
+                                                    returnPayoutId: order.returnPayoutId || null
+                                                }));
+
+                                                // Get global discount
+                                                db.get("SELECT value FROM settings WHERE key = 'globalDiscount'", (err, setting) => {
+                                                    if (err) {
+                                                        reject(err);
+                                                        return;
+                                                    }
+                                                    data.globalDiscount = setting ? parseInt(setting.value) : 25;
+                                                    resolve(data);
+                                                });
+                                            });
                                         });
                                     });
                                 });
@@ -551,6 +635,11 @@ const saveDataToDatabase = (data) => {
             operationsCount++;
             db.run("DELETE FROM tjSharePercentages", (err) => { 
                 if (err) console.error('Error clearing tjSharePercentages:', err);
+                checkComplete();
+            });
+            operationsCount++;
+            db.run("DELETE FROM filamentProviderHistory", (err) => { 
+                if (err) console.error('Error clearing filamentProviderHistory:', err);
                 checkComplete();
             });
             operationsCount++;
@@ -699,6 +788,42 @@ const saveDataToDatabase = (data) => {
                         handleError(err);
                     } else {
                         console.log(`TJ share percentages saved successfully: ${data.tjSharePercentages.length} entries`);
+                        checkComplete();
+                    }
+                });
+            }
+
+            // Insert filament provider history
+            if (data.filamentProviderHistory && data.filamentProviderHistory.length > 0) {
+                operationsCount++;
+                const insertFilamentProvider = db.prepare("INSERT INTO filamentProviderHistory (id, date, enabled, message) VALUES (?, ?, ?, ?)");
+                data.filamentProviderHistory.forEach(entry => {
+                    insertFilamentProvider.run(entry.id, entry.date, entry.enabled ? 1 : 0, entry.message || "");
+                });
+                insertFilamentProvider.finalize((err) => {
+                    if (err) {
+                        console.error('Error saving filament provider history:', err);
+                        handleError(err);
+                    } else {
+                        console.log(`Filament provider history saved successfully: ${data.filamentProviderHistory.length} entries`);
+                        checkComplete();
+                    }
+                });
+            }
+
+            // Insert activity logs
+            if (data.activityLogs && data.activityLogs.length > 0) {
+                operationsCount++;
+                const insertActivityLog = db.prepare("INSERT INTO activityLogs (id, type, message, timestamp, details) VALUES (?, ?, ?, ?, ?)");
+                data.activityLogs.forEach(log => {
+                    insertActivityLog.run(log.id, log.type, log.message, log.timestamp, JSON.stringify(log.details || {}));
+                });
+                insertActivityLog.finalize((err) => {
+                    if (err) {
+                        console.error('Error saving activity logs:', err);
+                        handleError(err);
+                    } else {
+                        console.log(`Activity logs saved successfully: ${data.activityLogs.length} entries`);
                         checkComplete();
                     }
                 });
