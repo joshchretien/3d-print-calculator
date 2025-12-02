@@ -1065,9 +1065,37 @@
             
             // Add order section visibility
             const [showAddOrder, setShowAddOrder] = useState(false);
+            const [showDuplicateOrderModal, setShowDuplicateOrderModal] = useState(false);
+            const [duplicateOrderInfo, setDuplicateOrderInfo] = useState(null);
+            const [orderNumberStatus, setOrderNumberStatus] = useState(null); // 'new', 'duplicate', or null
             
             // Ensure orders array exists
             const orders = state.orders || [];
+            
+            // Check for duplicate order number in real-time
+            useEffect(() => {
+                const trimmedOrderNumber = orderNumber.trim().toLowerCase();
+                if (trimmedOrderNumber.length === 0) {
+                    setOrderNumberStatus(null);
+                    return;
+                }
+                
+                // Check if order number already exists
+                const existingOrder = orders.find(o => 
+                    o.orderNumber && o.orderNumber.trim().toLowerCase() === trimmedOrderNumber
+                );
+                
+                if (existingOrder) {
+                    setOrderNumberStatus('duplicate');
+                    setDuplicateOrderInfo({
+                        orderNumber: existingOrder.orderNumber,
+                        order: existingOrder
+                    });
+                } else {
+                    setOrderNumberStatus('new');
+                    setDuplicateOrderInfo(null);
+                }
+            }, [orderNumber, orders]);
             
             const toggleOrderSelection = useCallback((orderId, currentIndex, event, sortedOrders) => {
                 setSelectedOrderIds(prev => {
@@ -1165,6 +1193,40 @@
                     item.id === itemId ? { ...item, [field]: value } : item
                 ));
             }, []);
+
+            // Add order function - checks for duplicates before creating
+            const addOrder = useCallback(() => {
+                // Prevent adding if duplicate
+                if (orderNumberStatus === 'duplicate') {
+                    setShowDuplicateOrderModal(true);
+                    return;
+                }
+                
+                // Validate required fields
+                if (!orderNumber.trim()) {
+                    alert("Please enter an order number");
+                    return;
+                }
+                if (!source) {
+                    alert("Please select a source");
+                    return;
+                }
+                if (!etsyPayout || parseFloat(etsyPayout) <= 0) {
+                    alert("Please enter a valid payout amount");
+                    return;
+                }
+                if (!shippingCost || parseFloat(shippingCost) < 0) {
+                    alert("Please enter a valid shipping cost");
+                    return;
+                }
+                if (orderItems.length === 0 || !orderItems[0].product || !orderItems[0].count) {
+                    alert("Please add at least one order item");
+                    return;
+                }
+                
+                // Create and add the order
+                createAndAddOrder();
+            }, [orderNumberStatus, orderNumber, source, etsyPayout, shippingCost, orderItems, createAndAddOrder]);
 
             // Filter orders into paid and unpaid
             const unpaidOrders = useMemo(() => {
@@ -1337,20 +1399,8 @@
                 setIncludeReturnsInPayout(true);
             }, [selectedOrderIds, dispatch, includeReturnsInPayout, returnedOrders]);
 
-            const addOrder = useCallback(() => {
-                if (!orderNumber.trim() || !etsyPayout || !shippingCost) {
-                    alert("Please fill in order number, etsy payout, and shipping cost");
-                    return;
-                }
-
-                // Validate all order items
-                for (const item of orderItems) {
-                    if (!item.product || !item.count || !item.quantity) {
-                        alert("Please fill in all product fields for each line item");
-                        return;
-                    }
-                }
-                
+            // Helper function to create and add order (used by both addOrder and proceedWithDuplicateOrder)
+            const createAndAddOrder = useCallback(() => {
                 const payout = parseFloat(etsyPayout);
                 const shipping = parseFloat(shippingCost);
                 const latestRoll = state.rollCosts[state.rollCosts.length - 1]?.value || CONSTANTS.DEFAULT_ROLL_COST;
@@ -1385,14 +1435,13 @@
                 
                 // Calculate TJ and Josh shares for the entire order
                 const profit = payout - shipping - totalProductionCost;
-                const orderDate = utils.today(); // Use today's date for comparison
+                const orderDate = utils.today();
                 
                 // Check if filament is provided by company (Josh)
                 const filamentProvidedByCompany = (() => {
                     if (!state.filamentProviderHistory || state.filamentProviderHistory.length === 0) {
                         return null;
                     }
-                    // Find the most recent enabled entry
                     const sortedHistory = [...state.filamentProviderHistory].sort((a, b) => 
                         new Date(b.date) - new Date(a.date)
                     );
@@ -1400,27 +1449,22 @@
                     return latestEnabled || null;
                 })();
                 
-                // Determine if production cost should go to Josh based on date
                 const isFilamentProvidedByCompany = filamentProvidedByCompany && 
                     new Date(orderDate) >= new Date(filamentProvidedByCompany.date);
                 
                 let tjShare, joshShare;
                 
                 if (maker === "Josh") {
-                    // Josh gets 100% of payouts (payout - shipping) + production cost
                     joshShare = profit + totalProductionCost;
                     tjShare = 0;
                 } else {
-                    // Get the latest TJ share percentage from history
                     const latestTjShare = state.tjSharePercentages && state.tjSharePercentages.length > 0 
                         ? state.tjSharePercentages[state.tjSharePercentages.length - 1].value / 100
                         : CONSTANTS.TJ_SHARE_PERCENTAGE;
                     
-                    // Default TJ logic: TJ gets X% of profit PLUS production cost
                     const tjProfitShare = profit * latestTjShare;
                     const joshProfitShare = profit * (1 - latestTjShare);
                     
-                    // If filament is provided by company, production cost goes to Josh instead of TJ
                     if (isFilamentProvidedByCompany) {
                         tjShare = tjProfitShare;
                         joshShare = joshProfitShare + totalProductionCost;
@@ -1452,7 +1496,14 @@
                 setOrderItems([{ id: utils.uid(), product: "", count: "", quantity: 1 }]);
                 setShowAddOrder(false);
                 alert("Order added successfully!");
-            }, [maker, source, orderNumber, etsyPayout, shippingCost, orderItems, state.products, state.rollCosts, dispatch]);
+            }, [maker, source, orderNumber, etsyPayout, shippingCost, orderItems, state.products, state.rollCosts, state.filamentProviderHistory, state.tjSharePercentages, dispatch]);
+            
+            // Function to proceed with duplicate order (force add)
+            const proceedWithDuplicateOrder = useCallback(() => {
+                setShowDuplicateOrderModal(false);
+                createAndAddOrder();
+                setDuplicateOrderInfo(null);
+            }, [createAndAddOrder]);
 
             const deleteOrder = useCallback((orderId) => {
                 if (confirm("Are you sure you want to delete this order?")) {
@@ -2053,6 +2104,8 @@
 
             {/* Add Order Section */}
             <div className={`mb-6 rounded-xl shadow-lg border border-gray-200 transition-colors duration-300 ${
+                orderNumberStatus === 'duplicate' ? 'bg-red-50 border-red-300' :
+                orderNumberStatus === 'new' ? 'bg-emerald-50 border-emerald-200' :
                 source === 'Website' ? 'bg-blue-50 border-blue-200' : 
                 source === 'Etsy' ? 'bg-orange-50 border-orange-200' : 
                 source === 'eBay' ? 'bg-green-50 border-green-200' :
@@ -2322,7 +2375,13 @@
                         <div className="mt-6 flex justify-end">
                             <button 
                                 onClick={addOrder}
-                                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors duration-200"
+                                disabled={orderNumberStatus === 'duplicate'}
+                                className={`px-6 py-2 rounded-lg transition-colors duration-200 ${
+                                    orderNumberStatus === 'duplicate' 
+                                        ? 'bg-gray-400 cursor-not-allowed text-gray-600' 
+                                        : 'bg-purple-600 hover:bg-purple-700 text-white'
+                                }`}
+                                title={orderNumberStatus === 'duplicate' ? 'Order already exists in system' : ''}
                             >
                                 Add Order
                             </button>
