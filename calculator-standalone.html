@@ -2242,6 +2242,11 @@
                                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
                                         autoFocus
                                     />
+                                    {orderNumberStatus === 'duplicate' && (
+                                        <p className="mt-2 text-sm font-bold text-red-600">
+                                            Order Already Entered
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </div>
