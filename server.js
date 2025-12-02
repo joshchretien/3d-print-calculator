@@ -1756,6 +1756,107 @@ app.get('/api/shipstation/test', async (req, res) => {
     }
 });
 
+// Diagnostic endpoint to inspect database for missing orders
+app.get('/api/diagnose/orders', (req, res) => {
+    try {
+        const { date } = req.query; // Optional: filter by date (YYYY-MM-DD)
+        
+        let query = "SELECT id, orderNumber, source, createdOn, status, etsyPayout, tjShare, joshShare FROM orders";
+        let params = [];
+        
+        if (date) {
+            query += " WHERE createdOn = ? OR createdOn LIKE ?";
+            params = [date, `${date}%`];
+        }
+        
+        query += " ORDER BY createdOn DESC";
+        
+        db.all(query, params, (err, orders) => {
+            if (err) {
+                console.error('Error querying orders for diagnosis:', err);
+                return res.status(500).json({ 
+                    error: 'Failed to query database',
+                    message: err.message
+                });
+            }
+            
+            // Also get total count
+            db.get("SELECT COUNT(*) as total FROM orders", (err, countResult) => {
+                if (err) {
+                    console.error('Error getting order count:', err);
+                    countResult = { total: orders.length };
+                }
+                
+                // Get orders by recent dates
+                const today = new Date();
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                
+                const todayStr = today.toISOString().split('T')[0];
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+                
+                // Get orders from yesterday and today
+                db.all(
+                    "SELECT id, orderNumber, source, createdOn, status FROM orders WHERE createdOn = ? OR createdOn = ? OR createdOn LIKE ? OR createdOn LIKE ? ORDER BY createdOn DESC",
+                    [todayStr, yesterdayStr, `${todayStr}%`, `${yesterdayStr}%`],
+                    (err, recentOrders) => {
+                        if (err) {
+                            console.warn('Error getting recent orders:', err);
+                            recentOrders = [];
+                        }
+                        
+                        // Compare with what's being loaded
+                        getDataFromDatabase().then(loadedData => {
+                            res.json({
+                                success: true,
+                                database: {
+                                    totalOrdersInDatabase: countResult.total || orders.length,
+                                    totalOrdersLoaded: loadedData.orders.length,
+                                    discrepancy: (countResult.total || orders.length) - loadedData.orders.length,
+                                    ordersFromDate: date ? orders : null,
+                                    recentOrders: recentOrders.map(o => ({
+                                        id: o.id,
+                                        orderNumber: o.orderNumber,
+                                        source: o.source,
+                                        createdOn: o.createdOn,
+                                        status: o.status
+                                    })),
+                                    allOrderIds: orders.map(o => o.id),
+                                    loadedOrderIds: loadedData.orders.map(o => o.id),
+                                    missingOrderIds: orders
+                                        .map(o => o.id)
+                                        .filter(id => !loadedData.orders.find(lo => lo.id === id))
+                                },
+                                queryDate: date || 'all',
+                                timestamp: new Date().toISOString()
+                            });
+                        }).catch(err => {
+                            res.status(500).json({
+                                error: 'Failed to load current data',
+                                message: err.message,
+                                databaseOrders: {
+                                    total: countResult.total || orders.length,
+                                    sample: orders.slice(0, 10).map(o => ({
+                                        id: o.id,
+                                        orderNumber: o.orderNumber,
+                                        createdOn: o.createdOn
+                                    }))
+                                }
+                            });
+                        });
+                    }
+                );
+            });
+        });
+    } catch (error) {
+        console.error('Diagnostic endpoint error:', error);
+        res.status(500).json({ 
+            error: 'Diagnostic failed',
+            message: error.message
+        });
+    }
+});
+
 // Initialize database and start server
 const startServer = async () => {
     try {
