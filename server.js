@@ -1,7 +1,9 @@
 const express = require('express');
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const session = require('express-session');
+const SQLiteStore = require('connect-sqlite3')(session);
 const sqlite3 = require('sqlite3').verbose();
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -879,15 +881,32 @@ const WOOCOMMERCE_URL = 'https://deliciosadecor.com';
 const WOOCOMMERCE_CONSUMER_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY || 'ck_f803a6e8b509e5cc726bbc2fc2a1116d9879f372';
 const WOOCOMMERCE_CONSUMER_SECRET = process.env.WOOCOMMERCE_CONSUMER_SECRET || 'cs_b888ae2b936a35ff6f9a42542defd0d3ce3e6686';
 
-// Session configuration
+// Session configuration with SQLite store for persistence
+const sessionStorePath = process.env.PERSISTENT_STORAGE_PATH ? 
+    `${process.env.PERSISTENT_STORAGE_PATH}/sessions` : 
+    './sessions';
+
+// Ensure session directory exists
+if (!fsSync.existsSync(sessionStorePath)) {
+    fsSync.mkdirSync(sessionStorePath, { recursive: true });
+}
+
 app.use(session({
+    store: new SQLiteStore({
+        dir: sessionStorePath,
+        db: 'sessions.db',
+        table: 'sessions'
+    }),
     secret: process.env.SESSION_SECRET || 'deliciosa-secret-key-2024',
     resave: false,
     saveUninitialized: false,
     cookie: {
         secure: false, // Set to true in production with HTTPS
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
+        httpOnly: true,
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        sameSite: 'lax'
+    },
+    name: 'deliciosa.sid' // Custom session cookie name
 }));
 
 // Middleware
