@@ -669,6 +669,11 @@ const saveDataToDatabase = (data) => {
                 if (err) console.error('Error clearing settings:', err);
                 checkComplete();
             });
+            operationsCount++;
+            db.run("DELETE FROM activityLogs", (err) => { 
+                if (err) console.error('Error clearing activityLogs:', err);
+                checkComplete();
+            });
 
             // Insert products
             if (data.products && data.products.length > 0) {
@@ -816,7 +821,7 @@ const saveDataToDatabase = (data) => {
             // Insert activity logs
             if (data.activityLogs && data.activityLogs.length > 0) {
                 operationsCount++;
-                const insertActivityLog = db.prepare("INSERT INTO activityLogs (id, type, message, timestamp, details) VALUES (?, ?, ?, ?, ?)");
+                const insertActivityLog = db.prepare("INSERT OR REPLACE INTO activityLogs (id, type, message, timestamp, details) VALUES (?, ?, ?, ?, ?)");
                 data.activityLogs.forEach(log => {
                     insertActivityLog.run(log.id, log.type, log.message, log.timestamp, JSON.stringify(log.details || {}));
                 });
