@@ -1319,7 +1319,24 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
         });
 
         if (!response.ok) {
-            throw new Error(`ShipStation API error: ${response.status} ${response.statusText}`);
+            // Handle specific error status codes
+            if (response.status === 503 || response.status === 502 || response.status === 504) {
+                return res.status(503).json({ 
+                    error: 'Service unavailable',
+                    message: 'ShipStation service temporarily unavailable. Please try again in a moment.'
+                });
+            } else if (response.status === 401 || response.status === 403) {
+                return res.status(401).json({ 
+                    error: 'Authentication failed',
+                    message: 'ShipStation API authentication failed. Please check API credentials.'
+                });
+            } else if (response.status === 404) {
+                // ShipStation might return 404 if order not found - we'll check the response body
+                // Don't return yet, let it fall through to check if orders array is empty
+            } else {
+                // For other errors, throw to be caught by outer catch block
+                throw new Error(`ShipStation API error: ${response.status} ${response.statusText}`);
+            }
         }
 
         const data = await response.json();
@@ -1524,10 +1541,24 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
 
     } catch (error) {
         console.error('ShipStation API error:', error);
-        res.status(500).json({ 
-            error: 'Failed to lookup shipping cost',
-            message: error.message
-        });
+        
+        // Check if the error message indicates a specific status code
+        if (error.message && error.message.includes('503')) {
+            return res.status(503).json({ 
+                error: 'Service unavailable',
+                message: 'ShipStation service temporarily unavailable. Please try again in a moment.'
+            });
+        } else if (error.message && (error.message.includes('401') || error.message.includes('403'))) {
+            return res.status(401).json({ 
+                error: 'Authentication failed',
+                message: 'ShipStation API authentication failed. Please check API credentials.'
+            });
+        } else {
+            res.status(500).json({ 
+                error: 'Failed to lookup shipping cost',
+                message: error.message || 'An unexpected error occurred while fetching shipping cost'
+            });
+        }
     }
 });
 
