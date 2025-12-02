@@ -881,22 +881,39 @@ const WOOCOMMERCE_URL = 'https://deliciosadecor.com';
 const WOOCOMMERCE_CONSUMER_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY || 'ck_f803a6e8b509e5cc726bbc2fc2a1116d9879f372';
 const WOOCOMMERCE_CONSUMER_SECRET = process.env.WOOCOMMERCE_CONSUMER_SECRET || 'cs_b888ae2b936a35ff6f9a42542defd0d3ce3e6686';
 
-// Session configuration with SQLite store for persistence
-const sessionStorePath = process.env.PERSISTENT_STORAGE_PATH ? 
-    `${process.env.PERSISTENT_STORAGE_PATH}/sessions` : 
-    './sessions';
+// Session configuration with SQLite store for persistence (with fallback to memory store)
+let sessionStore = null;
 
-// Ensure session directory exists
-if (!fsSync.existsSync(sessionStorePath)) {
-    fsSync.mkdirSync(sessionStorePath, { recursive: true });
+try {
+    const sessionStorePath = process.env.PERSISTENT_STORAGE_PATH ? 
+        `${process.env.PERSISTENT_STORAGE_PATH}/sessions` : 
+        './sessions';
+
+    // Ensure session directory exists
+    try {
+        if (!fsSync.existsSync(sessionStorePath)) {
+            fsSync.mkdirSync(sessionStorePath, { recursive: true });
+        }
+        
+        sessionStore = new SQLiteStore({
+            dir: sessionStorePath,
+            db: 'sessions.db',
+            table: 'sessions'
+        });
+        
+        console.log(`Session store initialized with SQLite at: ${sessionStorePath}`);
+    } catch (storeError) {
+        console.warn('Failed to initialize SQLite session store, falling back to memory store:', storeError.message);
+        console.warn('Sessions will not persist across server restarts, but the application will continue to work.');
+        sessionStore = null; // Will use default memory store
+    }
+} catch (error) {
+    console.warn('Error setting up session store, using memory store:', error.message);
+    sessionStore = null; // Will use default memory store
 }
 
 app.use(session({
-    store: new SQLiteStore({
-        dir: sessionStorePath,
-        db: 'sessions.db',
-        table: 'sessions'
-    }),
+    store: sessionStore, // null will use default MemoryStore
     secret: process.env.SESSION_SECRET || 'deliciosa-secret-key-2024',
     resave: false,
     saveUninitialized: false,
