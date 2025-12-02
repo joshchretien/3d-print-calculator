@@ -1319,22 +1319,27 @@ app.get('/api/shipstation/order/:orderNumber', async (req, res) => {
         });
 
         if (!response.ok) {
-            // Handle specific error status codes
+            // Handle specific error status codes - return immediately for these
             if (response.status === 503 || response.status === 502 || response.status === 504) {
+                console.error(`ShipStation service unavailable for order ${orderNumber}: ${response.status}`);
                 return res.status(503).json({ 
                     error: 'Service unavailable',
                     message: 'ShipStation service temporarily unavailable. Please try again in a moment.'
                 });
             } else if (response.status === 401 || response.status === 403) {
+                console.error(`ShipStation authentication failed for order ${orderNumber}: ${response.status}`);
                 return res.status(401).json({ 
                     error: 'Authentication failed',
                     message: 'ShipStation API authentication failed. Please check API credentials.'
                 });
-            } else if (response.status === 404) {
-                // ShipStation might return 404 if order not found - we'll check the response body
-                // Don't return yet, let it fall through to check if orders array is empty
             } else {
-                // For other errors, throw to be caught by outer catch block
+                // For other errors, try to read error message but don't parse as JSON yet
+                const errorText = await response.text().catch(() => '');
+                console.error(`ShipStation API error for order ${orderNumber}:`, {
+                    status: response.status,
+                    statusText: response.statusText,
+                    errorText: errorText.substring(0, 200)
+                });
                 throw new Error(`ShipStation API error: ${response.status} ${response.statusText}`);
             }
         }
