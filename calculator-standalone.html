@@ -3438,7 +3438,8 @@
                         monthly[monthKey].joshPaid += order.joshShare || 0;
                     }
                     
-                    if (order.returned) {
+                    // Only count returns that haven't been included in a payout yet
+                    if (order.returned && !order.returnPayoutId) {
                         monthly[monthKey].tjReturned += order.tjShare || 0;
                         monthly[monthKey].joshReturned += order.joshShare || 0;
                     }
@@ -3485,9 +3486,9 @@
                 };
             }, [filteredOrders]);
             
-            // Calculate return totals from filtered orders
+            // Calculate return totals from filtered orders (only pending returns, not those already in payouts)
             const returnTotals = useMemo(() => {
-                const returnedOrders = filteredOrders.filter(o => o.returned === true);
+                const returnedOrders = filteredOrders.filter(o => o.returned === true && !o.returnPayoutId);
                 let totalTjReturn = 0;
                 let totalJoshReturn = 0;
                 returnedOrders.forEach(order => {
