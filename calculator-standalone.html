@@ -180,14 +180,26 @@
         const stripAdv = (key) => String(key || "").replace(/^adv-/, "");
 
         const ensurePresetForStyle = (style, preset, multipliers) => {
+            // First, check if the preset exists as-is in multipliers - always respect explicit preset names
+            if (multipliers[preset] || DEFAULT_MULTIPLIERS[preset]) {
+                return preset;
+            }
+            
+            // Only try to convert if the preset doesn't exist
             const isAdv = String(style || "").toLowerCase().startsWith("adv");
-            if (isAdv && !String(preset).startsWith("adv-") && multipliers["adv-" + preset]) {
-                return "adv-" + preset;
+            if (isAdv && !String(preset).startsWith("adv-")) {
+                const advPreset = "adv-" + preset;
+                if (multipliers[advPreset] || DEFAULT_MULTIPLIERS[advPreset]) {
+                    return advPreset;
+                }
             }
             if (!isAdv && String(preset).startsWith("adv-")) {
                 const bare = stripAdv(preset);
-                if (multipliers[bare]) return bare;
+                if (multipliers[bare] || DEFAULT_MULTIPLIERS[bare]) {
+                    return bare;
+                }
             }
+            // Return the original preset even if not found (will fall back to empty object)
             return preset;
         };
 
@@ -496,11 +508,11 @@
             const costPerGram = useMemo(() => latestRoll / 1000, [latestRoll]);
             
             // Use editPreset when editing, otherwise use product.preset
-            const currentPreset = isEditing ? editPreset : product.preset;
+            const currentPreset = useMemo(() => isEditing ? editPreset : product.preset, [isEditing, editPreset, product.preset]);
             const mpKey = useMemo(() => ensurePresetForStyle(product.style, currentPreset, state.multipliers), [product.style, currentPreset, state.multipliers]);
             const multipliers = useMemo(() => {
                 return state.multipliers[mpKey] || DEFAULT_MULTIPLIERS[mpKey] || {};
-            }, [state.multipliers[mpKey], mpKey]);
+            }, [state.multipliers, mpKey]);
             
             // Calculate counts from current preset (editPreset when editing, product.preset otherwise)
             const currentCounts = useMemo(() => {
