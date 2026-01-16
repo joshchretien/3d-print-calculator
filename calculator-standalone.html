@@ -1234,7 +1234,7 @@
                     alert("Please select a source");
                     return;
                 }
-                if (!etsyPayout || parseFloat(etsyPayout) <= 0) {
+                if (!etsyPayout || isNaN(parseFloat(etsyPayout))) {
                     alert("Please enter a valid payout amount");
                     return;
                 }
@@ -1755,6 +1755,11 @@
 
                 const payout = parseFloat(editEtsyPayout);
                 const shipping = parseFloat(editShippingCost);
+                
+                if (isNaN(payout) || isNaN(shipping)) {
+                    alert("Please enter valid payout and shipping cost amounts");
+                    return;
+                }
                 const latestRoll = state.rollCosts[state.rollCosts.length - 1]?.value || CONSTANTS.DEFAULT_ROLL_COST;
                 const costPerGram = latestRoll / 1000;
                 
