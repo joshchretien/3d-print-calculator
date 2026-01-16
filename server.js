@@ -1047,6 +1047,8 @@ const DEFAULT_DATA = {
     multipliers: {
         "1|5|30|60|90|120": { 1: 6.5, 5: 3.5, 30: 2, 60: 1.8, 90: 1.6, 120: 1.5 },
         "Prism": { 12: 15, 36: 19.5, 54: 11.5, 72: 10.75 },
+        "Prism 8MM": { 1: 40.61, 12: 15, 36: 19.5, 54: 11.5, 72: 10.75 },
+        "Prism Advanced": { 1: 13.24, 12: 17.3, 36: 22.4, 54: 13.2, 72: 12.4 },
         "Nanoleaf Advanced": { 1: 19.5, 30: 8 },
         "Nanoleaf 8MM": { 1: 49.5, 30: 22 },
         "adv-5|72|108|144": { 1: 50, 5: 11, 72: 10, 108: 9.5, 144: 9 },
@@ -1086,6 +1088,8 @@ const FALLBACK_DATA = {
     multipliers: {
         "1|5|30|60|90|120": { 1: 6.5, 5: 3.5, 30: 2, 60: 1.8, 90: 1.6, 120: 1.5 },
         "Prism": { 12: 15, 36: 19.5, 54: 11.5, 72: 10.75 },
+        "Prism 8MM": { 1: 40.61, 12: 15, 36: 19.5, 54: 11.5, 72: 10.75 },
+        "Prism Advanced": { 1: 13.24, 12: 17.3, 36: 22.4, 54: 13.2, 72: 12.4 },
         "Nanoleaf Advanced": { 1: 19.5, 30: 8 },
         "Nanoleaf 8MM": { 1: 49.5, 30: 22 },
         "adv-5|72|108|144": { 1: 50, 5: 11, 72: 10, 108: 9.5, 144: 9 },
@@ -1131,6 +1135,28 @@ const migrateData = async (data) => {
     }
     if (data.multipliers && !data.multipliers["5|72|108|144"]) {
         data.multipliers["5|72|108|144"] = { 1: 50, 5: 30, 72: 20, 108: 18, 144: 16 };
+        updated = true;
+    }
+    
+    // Ensure Prism 8MM has 1 count multiplier
+    if (data.multipliers && data.multipliers["Prism 8MM"]) {
+        if (!data.multipliers["Prism 8MM"][1]) {
+            data.multipliers["Prism 8MM"][1] = 40.61;
+            updated = true;
+        }
+    } else if (data.multipliers) {
+        data.multipliers["Prism 8MM"] = { 1: 40.61, 12: 15, 36: 19.5, 54: 11.5, 72: 10.75 };
+        updated = true;
+    }
+    
+    // Ensure Prism Advanced has 1 count multiplier
+    if (data.multipliers && data.multipliers["Prism Advanced"]) {
+        if (!data.multipliers["Prism Advanced"][1]) {
+            data.multipliers["Prism Advanced"][1] = 13.24;
+            updated = true;
+        }
+    } else if (data.multipliers) {
+        data.multipliers["Prism Advanced"] = { 1: 13.24, 12: 17.3, 36: 22.4, 54: 13.2, 72: 12.4 };
         updated = true;
     }
     

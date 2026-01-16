@@ -392,6 +392,24 @@
                 state.multipliers["5|72|108|144"] = { 1: 50, 5: 30, 72: 20, 108: 18, 144: 16 };
             }
             
+            // Ensure Prism 8MM has 1 count multiplier
+            if (state.multipliers["Prism 8MM"]) {
+                if (!state.multipliers["Prism 8MM"][1]) {
+                    state.multipliers["Prism 8MM"][1] = 40.61;
+                }
+            } else {
+                state.multipliers["Prism 8MM"] = DEFAULT_MULTIPLIERS["Prism 8MM"];
+            }
+            
+            // Ensure Prism Advanced has 1 count multiplier
+            if (state.multipliers["Prism Advanced"]) {
+                if (!state.multipliers["Prism Advanced"][1]) {
+                    state.multipliers["Prism Advanced"][1] = 13.24;
+                }
+            } else {
+                state.multipliers["Prism Advanced"] = DEFAULT_MULTIPLIERS["Prism Advanced"];
+            }
+            
 
             // Migrate preset names for existing products
             state.products = state.products.map(product => {
