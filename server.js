@@ -1113,6 +1113,22 @@ const migrateData = async (data) => {
                 product.counts = [12, ...product.counts];
                 updated = true;
             }
+            // Update Prism 8MM products to include count 1
+            if (product.preset === "Prism 8MM") {
+                const counts = product.counts || [12, 36, 54, 72];
+                if (!counts.includes(1)) {
+                    product.counts = [1, ...counts];
+                    updated = true;
+                }
+            }
+            // Update Prism Advanced products to include count 1
+            if (product.preset === "Prism Advanced") {
+                const counts = product.counts || [12, 36, 54, 72];
+                if (!counts.includes(1)) {
+                    product.counts = [1, ...counts];
+                    updated = true;
+                }
+            }
         });
     }
     

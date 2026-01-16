@@ -423,6 +423,19 @@
                 if (product.preset === "adv-5|72|108|144" || product.preset === "5|72|108|144") {
                     return { ...product, counts: [1, 5, 72, 108, 144] };
                 }
+                // Update Prism products to include count 1
+                if (product.preset === "Prism 8MM") {
+                    const counts = product.counts || [12, 36, 54, 72];
+                    if (!counts.includes(1)) {
+                        return { ...product, counts: [1, ...counts] };
+                    }
+                }
+                if (product.preset === "Prism Advanced") {
+                    const counts = product.counts || [12, 36, 54, 72];
+                    if (!counts.includes(1)) {
+                        return { ...product, counts: [1, ...counts] };
+                    }
+                }
                 return product;
             });
 
