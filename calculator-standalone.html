@@ -140,8 +140,8 @@
             "adv-1|5|30|60|90|120": { 1: 16, 5: 12.5, 30: 10, 60: 8, 90: 6.5, 120: 5.5 },
             "adv-1|5|12|36|72|108": { 1: 16, 5: 12.5, 12: 11.5, 36: 9, 72: 7, 108: 5.5 },
             "Power Supply": { 1: 60 },
-            "Prism 8MM": { 12: 15, 36: 19.5, 54: 11.5, 72: 10.75 },
-            "Prism Advanced": { 12: 17.3, 36: 22.4, 54: 13.2, 72: 12.4 },
+            "Prism 8MM": { 1: 40.61, 12: 15, 36: 19.5, 54: 11.5, 72: 10.75 },
+            "Prism Advanced": { 1: 13.24, 12: 17.3, 36: 22.4, 54: 13.2, 72: 12.4 },
             "Nanoleaf Advanced": { 1: 19.5, 30: 8 },
             "Nanoleaf 8MM": { 1: 49.5, 30: 22 },
             "adv-5|72|108|144": { 1: 16, 5: 12.5, 72: 7, 108: 5.5, 144: 5 },
@@ -211,7 +211,7 @@
                 return [1];
             }
             if (preset === "Prism 8MM" || preset === "Prism Advanced") {
-                return [12, 36, 54, 72];
+                return [1, 12, 36, 54, 72];
             }
             if (preset === "nanoleaf-30" || preset === "Nanoleaf Advanced" || preset === "Nanoleaf 8MM") {
                 return [1, 30];
@@ -1242,8 +1242,8 @@
                     alert("Please enter a valid shipping cost");
                     return;
                 }
-                if (orderItems.length === 0 || !orderItems[0].product || !orderItems[0].count) {
-                    alert("Please add at least one order item");
+                if (orderItems.length === 0 || !orderItems[0].product || !orderItems[0].count || isNaN(parseInt(orderItems[0].count))) {
+                    alert("Please add at least one order item with a valid count");
                     return;
                 }
                 
