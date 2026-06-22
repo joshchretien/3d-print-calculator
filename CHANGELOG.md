@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - TBD
 
+## [1.7.2] - 2025-06-22
+
+### Fixed
+- Synced standalone calculator version with server (was stuck at 1.4.5, causing false update notifications)
+
 ## [1.7.1] - 2025-01-27
 
 ### Fixed
