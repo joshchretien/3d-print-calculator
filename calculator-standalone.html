@@ -1248,40 +1248,6 @@
                 ));
             }, []);
 
-            // Add order function - checks for duplicates before creating
-            const addOrder = useCallback(() => {
-                // Prevent adding if duplicate
-                if (orderNumberStatus === 'duplicate') {
-                    setShowDuplicateOrderModal(true);
-                    return;
-                }
-                
-                // Validate required fields
-                if (!orderNumber.trim()) {
-                    alert("Please enter an order number");
-                    return;
-                }
-                if (!source) {
-                    alert("Please select a source");
-                    return;
-                }
-                if (!etsyPayout || isNaN(parseFloat(etsyPayout))) {
-                    alert("Please enter a valid payout amount");
-                    return;
-                }
-                if (!shippingCost || parseFloat(shippingCost) < 0) {
-                    alert("Please enter a valid shipping cost");
-                    return;
-                }
-                if (orderItems.length === 0 || !orderItems[0].product || !orderItems[0].count || isNaN(parseInt(orderItems[0].count))) {
-                    alert("Please add at least one order item with a valid count");
-                    return;
-                }
-                
-                // Create and add the order
-                createAndAddOrder();
-            }, [orderNumberStatus, orderNumber, source, etsyPayout, shippingCost, orderItems, createAndAddOrder]);
-
             // Filter orders into paid and unpaid
             const unpaidOrders = useMemo(() => {
                 return orders.filter(order => order.status !== 'Paid');
@@ -1551,6 +1517,40 @@
                 setShowAddOrder(false);
                 alert("Order added successfully!");
             }, [maker, source, orderNumber, etsyPayout, shippingCost, orderItems, state.products, state.rollCosts, state.filamentProviderHistory, state.tjSharePercentages, dispatch]);
+
+            // Add order function - checks for duplicates before creating
+            const addOrder = useCallback(() => {
+                // Prevent adding if duplicate
+                if (orderNumberStatus === 'duplicate') {
+                    setShowDuplicateOrderModal(true);
+                    return;
+                }
+                
+                // Validate required fields
+                if (!orderNumber.trim()) {
+                    alert("Please enter an order number");
+                    return;
+                }
+                if (!source) {
+                    alert("Please select a source");
+                    return;
+                }
+                if (!etsyPayout || isNaN(parseFloat(etsyPayout))) {
+                    alert("Please enter a valid payout amount");
+                    return;
+                }
+                if (!shippingCost || parseFloat(shippingCost) < 0) {
+                    alert("Please enter a valid shipping cost");
+                    return;
+                }
+                if (orderItems.length === 0 || !orderItems[0].product || !orderItems[0].count || isNaN(parseInt(orderItems[0].count))) {
+                    alert("Please add at least one order item with a valid count");
+                    return;
+                }
+                
+                // Create and add the order
+                createAndAddOrder();
+            }, [orderNumberStatus, orderNumber, source, etsyPayout, shippingCost, orderItems, createAndAddOrder]);
             
             // Function to proceed with duplicate order (force add)
             const proceedWithDuplicateOrder = useCallback(() => {
