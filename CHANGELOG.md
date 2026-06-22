@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - TBD
 
+## [1.7.3] - 2025-06-22
+
+### Fixed
+- White screen after login caused by Babel emitting ES module imports incompatible with in-browser UMD React
+- Pinned React and Babel CDN versions and compile JSX with classic runtime
+- Prevented stray local `index.html` from overriding the calculator at `/`
+
 ## [1.7.2] - 2025-06-22
 
 ### Fixed

@@ -1012,8 +1012,8 @@ app.use((req, res, next) => {
     requireAuth(req, res, next);
 });
 
-// Serve static files after authentication middleware
-app.use(express.static('.'));
+// Serve static files after authentication middleware (disable index.html so / uses calculator-standalone.html)
+app.use(express.static('.', { index: false }));
 
 // Default data structure with your current products embedded
 const DEFAULT_DATA = {

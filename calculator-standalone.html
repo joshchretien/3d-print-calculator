@@ -4,19 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Print Pricing Calculator</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.26.9/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
     <div id="root"></div>
-    <script type="text/babel">
+    <script type="text/plain" id="calculator-app-source">
         const { useState, useReducer, useEffect, useMemo, useCallback, useRef, memo } = React;
 
         // Version checking and auto-refresh functionality
         const VersionChecker = {
-            currentVersion: '1.7.2',
+            currentVersion: '1.7.3',
             checkInterval: 30000, // Check every 30 seconds
             intervalId: null,
 
@@ -4839,6 +4839,34 @@
                 `;
             }
         }
+    </script>
+    <script>
+        (function () {
+            try {
+                var source = document.getElementById('calculator-app-source').textContent;
+                var compiled = Babel.transform(source, {
+                    presets: [['react', { runtime: 'classic' }]]
+                }).code;
+                var script = document.createElement('script');
+                script.text = compiled;
+                document.body.appendChild(script);
+            } catch (error) {
+                console.error('Babel compile error:', error);
+                var root = document.getElementById('root');
+                if (root) {
+                    root.innerHTML = `
+                        <div style="padding: 20px; font-family: Arial, sans-serif;">
+                            <h1 style="color: red;">Application Error</h1>
+                            <p>Failed to compile the application. Please check the browser console for details.</p>
+                            <p><strong>Error:</strong> ${error.message}</p>
+                            <button onclick="location.reload()" style="padding: 10px 20px; background: #3B82F6; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">
+                                Reload Page
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        })();
     </script>
 </body>
 </html>
